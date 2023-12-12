@@ -16,33 +16,26 @@ class Message(Enum):
 
     请参考 docs/回调消息.md
     """
-    InternalError = 0
+# /* Global Info */
+    InternalError     = 0           # 内部错误
+    InitFailed        = 1           # 初始化失败
+    ConnectionInfo    = 2           # 连接相关信息
+    AllTasksCompleted = 3           # 全部任务完成
+    AsyncCallInfo = 4               # 外部异步调用信息
 
-    InitFailed = auto()
+    # /* TaskChain Info */
+    TaskChainError     = 10000      # 任务链执行/识别错误
+    TaskChainStart     = 10001      # 任务链开始
+    TaskChainCompleted = 10002      # 任务链完成
+    TaskChainExtraInfo = 10003      # 任务链额外信息
+    TaskChainStopped   = 10004      # 任务链手动停止
 
-    ConnectionInfo = auto()
-
-    AllTasksCompleted = auto()
-
-    TaskChainError = 10000
-
-    TaskChainStart = auto()
-
-    TaskChainCompleted = auto()
-
-    TaskChainExtraInfo = auto()
-
-    TaskChainStopped = auto()
-
-    SubTaskError = 20000
-
-    SubTaskStart = auto()
-
-    SubTaskCompleted = auto()
-
-    SubTaskExtraInfo = auto()
-
-    SubTaskStopped = auto()
+    # /* SubTask Info */
+    SubTaskError      = 20000       # 原子任务执行/识别错误
+    SubTaskStart      = 20001       # 原子任务开始
+    SubTaskCompleted  = 20002       # 原子任务完成
+    SubTaskExtraInfo  = 20003       # 原子任务额外信息
+    SubTaskStopped    = 20004       # 原子任务手动停止
 
 
 @unique

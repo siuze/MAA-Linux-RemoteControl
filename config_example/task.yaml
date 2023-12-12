@@ -74,7 +74,7 @@ tasks:
       drones: Money
       threshold: 0.3
       replenish: true
-      dorm_notstationed_enabled: true
+      dorm_notstationed_enabled: false
       dorm_trust_enabled: true
 
 

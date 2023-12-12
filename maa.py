@@ -4,13 +4,13 @@ import json
 import time
 import datetime
 import yaml
-
+import asyncio
 from loguru import logger as lg
 from asst.asst import Asst
 from asst.utils import Message, Version, InstanceOptionType
 from asst.updater import Updater
 
-from Qmsg import send_msg
+from Qmsg import JustPrint as send_msg
 # from Qmsg import send_qqimagedeliver as send_msg
 
 #记录日志
@@ -18,6 +18,38 @@ lg.add(str(Path(__file__).parent / "logs/log_{time}.log"), rotation="1 day")
 
 
 
+@Asst.CallBackType
+def my_callback(msg, details, arg) -> None:
+	"""
+	MAA-CORE的运行消息回调函数
+	:params:
+		``msg``: 消息类型
+		``details``:  消息具体内容
+	:return: None
+	"""
+	m = Message(msg)
+	js = json.loads(details.decode('utf-8'))
+	if msg == Message.InternalError or msg == Message.SubTaskError or msg == Message.TaskChainError:
+		text = f"MAA出错：{str(m)} {details.decode('utf-8')}"
+		lg.error(text)
+		send_msg(text)
+		exit(1)
+	if 'what' in js:
+		what = js['what']
+		if what == 'UuidGot':
+			text = f"获取到ADB设备uuid：{js['details']['uuid']}"
+			lg.info(text)
+			maa.start_log += text + '\n'
+			#maa 明明是在后面定义的呀，很怪，但是确实能跑（本代码依赖bug运行，修的话就要把这些日志变量调到全局去了）
+		elif what == 'ResolutionGot':
+			text = f"获取到ADB设备分辨率：{js['details']['height']} X {js['details']['width']}"
+			lg.info(text)
+			maa.start_log += text + '\n'
+		elif what == 'StageDrops':
+			maa.add_fight_msg(js['details'])
+	if maa.asst_config['python']['debug']:
+		lg.info(m)
+		lg.info(js)
 
 
 class MAA:
@@ -36,7 +68,7 @@ class MAA:
 		#加载资源
 		Asst.load(path=self.core_path, incremental_path=self.core_path / 'cache')
 		#构造并设置回调函数
-		self.asst = Asst(callback=self.my_callback)
+		self.asst = Asst(callback=my_callback)
 		#获取maa内核配置
 		self.asst_config_path = str(Path(__file__).parent / "config/asst.yaml")
 		with open(self.asst_config_path, 'r', encoding='utf8') as config_f:
@@ -86,20 +118,19 @@ class MAA:
 			exit(1)
 		self.asst_config["connection"]["port"] = int(port)
 
-	def connect(self):
+	async def connect(self):
 		"""
 		通过ADB连接到安卓设备
 		"""
 		#获取ADB端口
 		if self.asst_config['connection']:
 			self.find_adb_wifi_port()
-			self.set_config()
 
 		text = f'尝试连接到：{self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}'
 		lg.info(text)
 		self.start_log += text + '\n'
 
-		if self.asst.connect(	adb_path = self.asst_config["connection"]["adb"], 
+		if await self.asst.connect(	adb_path = self.asst_config["connection"]["adb"], 
 								address = f'{self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}', 
 								config = self.asst_config["connection"]["config"]
 							):
@@ -107,7 +138,13 @@ class MAA:
 			lg.info(text)
 			self.start_log += text + '\n'
 			send_msg(self.start_log)
-			self.screenshot('连接成功后')
+
+			# await self.screenshot('连接成功后')
+			# print("开始测试截图")
+			# time.sleep(5)
+			# print("结束测试截图")
+			# await self.screenshot('测试结束后')
+			# exit()
 		else:
 			text = f'连接失败，请检查MAA-CORE的日志，应当位于 {self.core_path}/debug/asst.log'
 			lg.error(text)
@@ -115,7 +152,7 @@ class MAA:
 			send_msg(self.start_log)
 			exit(1)
 
-	def screenshot(self,file_name,rb=False): 
+	async def screenshot(self,file_name,rb=False): 
 		"""
 		调用MAA-CORE的API获取截图
 		这个不是立即截图，只是获取任务运行的最近一张截图，怎么立即截图我还没研究出来
@@ -124,7 +161,8 @@ class MAA:
 			``rb``:  是否返回图片文件的二进制bytes数组
 		:return: 图片文件bytes[] | None
 		"""
-		img,length = self.asst.screenshot()
+		img,length = await self.asst.screenshot()
+		print(f"截图大小{length/1024}KBytes")
 		with open(f'img/{file_name}.png','wb') as f:
 			f.write(img[:length])
 		if rb:
@@ -132,37 +170,6 @@ class MAA:
 		else:
 			return length
 
-	@Asst.CallBackType
-	def my_callback(self, msg, details, arg) -> None:
-		"""
-		MAA-CORE的运行消息回调函数
-		:params:
-			``msg``: 消息类型
-			``details``:  消息具体内容
-		:return: None
-		"""
-		m = Message(msg)
-		js = json.loads(details.decode('utf-8'))
-		if msg == Message.InternalError or msg == Message.SubTaskError or msg == Message.TaskChainError:
-			text = f"MAA出错：{str(m)} {details.decode('utf-8')}"
-			lg.error(text)
-			send_msg(text)
-			exit(1)
-		if 'what' in js:
-			what = js['what']
-			if what == 'UuidGot':
-				text = f"获取到ADB设备uuid：{js['details']['uuid']}"
-				lg.info(text)
-				self.start_log += text + '\n'
-			elif what == 'ResolutionGot':
-				text = f"获取到ADB设备分辨率：{js['details']['height']} X {js['details']['width']}"
-				lg.info(text)
-				self.start_log += text + '\n'
-			elif what == 'StageDrops':
-				self.add_fight_msg(js['details'])
-		if self.asst_config['python']['debug']:
-			lg.info(m)
-			lg.info(js)
 
 	def add_fight_msg(self, detail):
 		"""
@@ -187,7 +194,7 @@ class MAA:
 		while self.fight_log['msg'][-1:] == '\n':
 			self.fight_log['msg'] = self.fight_log['msg'][:-1]
 
-	def run_tasks(self):
+	async def run_tasks(self):
 		"""
 		逐个运行任务配置中填写的任务
 		"""
@@ -233,7 +240,7 @@ class MAA:
 			#运行前截图
 			img_msg = None
 			if "screenshot" in task and (task['screenshot'] == 'before' or task['screenshot'] =='both'):
-				img_msg = self.screenshot(f"before_{task['type']}_{task_id}",rb=True)
+				img_msg = await self.screenshot(f"before_{task['type']}_{task_id}",rb=True)
 
 			#启动运行
 			self.asst.start()
@@ -242,7 +249,7 @@ class MAA:
 
 			#运行后截图
 			if "screenshot" in task and (task['screenshot'] == 'after' or task['screenshot'] =='both'):
-				img_msg = self.screenshot(f"after_{task['type']}_{task_id}",rb=True)
+				img_msg = await self.screenshot(f"after_{task['type']}_{task_id}",rb=True)
 
 			lg.info(f"【任务 {task['type']}_{task_id} 结束】")
 
@@ -252,12 +259,15 @@ class MAA:
 
 			self.asst.stop()
 
-	def run(self):
+	async def run(self):
 		"""
 		入口函数，连接和运行任务
 		"""
-		self.connect()
-		self.run_tasks()
+		await self.connect()
+		await self.run_tasks()
 
 maa = MAA()
-maa.run()
+loop = asyncio.get_event_loop()
+result = loop.run_until_complete(maa.run())
+loop.close()
+# maa.run()

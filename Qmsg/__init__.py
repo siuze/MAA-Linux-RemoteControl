@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 
-with open(str(Path(__file__).parent / "config/asst.yaml"), 'r', encoding='utf8') as config_f:
+with open(str(Path(__file__).parent / "../config/asst.yaml"), 'r', encoding='utf8') as config_f:
 	asst_config = yaml.safe_load(config_f)
 to_id = str(asst_config['msg']['to'])
 url = asst_config['msg']['url']
@@ -65,3 +65,6 @@ def send_qqimagedeliver(msg:str, img=None):
 	lg.info('发送post数据请求成功!')
 	lg.info('返回post结果如下：')
 	lg.info(html.text)
+
+def JustPrint(msg:str, img=None, flag:int=0):
+	print(msg)

@@ -18,7 +18,7 @@ import yaml
 
 proxies={}
 
-with open(str(Path(__file__).parent / "config/asst.yaml"), 'r', encoding='utf8') as config_f:
+with open(str(Path(__file__).parent / "../config/asst.yaml"), 'r', encoding='utf8') as config_f:
 	asst_config = yaml.safe_load(config_f)
 	if 'proxy' in asst_config['python'] and asst_config['python']['proxy']:
 		proxies={'http': asst_config['python']['proxy'],'https': asst_config['python']['proxy']}
