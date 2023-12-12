@@ -1,0 +1,16 @@
+connection:
+  adb: /user/platform-tools/adb #你放ADB文件的绝对路径，能且只能以adb结尾
+  config: CompatPOSIXShell  #linux下需要用这个配置，如果用General会没办法退出游戏。实在要修改的话请参考https://maa.plus/docs/1.6-CLI%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97.html#maacore-%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE
+  ip: 192.168.XX.XXX  #安卓设备/模拟器的IP地址
+  port: 40987 #adb的端口
+  scan_port: true #对于安卓11及以上的设备可以在开发者选项开启无线调试，但是端口一段时间会变，所以加入了自动扫描功能，如果使用普通的TCP连接请不要开启
+
+instance_options:
+  touch_mode: adb #触控方法 "ADB", "MiniTouch", "MAATouch" 注意改成小写
+
+python:
+  debug: true #打开后会输出很多来自maa-core的日志
+  proxy:  http://127.0.0.1:7890 #下载更新的时候配置的代理，可以留空但请确保可以访问github，其他镜像源有点问题，所以我强制只从github下载了
+msg:
+  url: http://127.0.0.1:8888/sendmsg  #消息通知服务的请求地址
+  to: 1234567890  #要发到哪个群里

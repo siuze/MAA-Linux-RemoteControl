@@ -1,0 +1,114 @@
+{
+	"点击进驻总览": {
+		"algorithm": "OcrDetect",
+		"text": [
+			"总览"
+		],
+		"action": "ClickSelf",
+		"postDelay": 2000
+	},
+	"返回": {
+		"template": [
+			"Return.png",
+			"Return-White.png"
+		],
+		"templThreshold": [
+			0.7,
+			0.8
+		],
+		"action": "ClickSelf",
+		"cache": false,
+		"roi": [
+			0,
+			0,
+			180,
+			80
+		]
+	},
+	"简报截图": {
+		"algorithm": "OcrDetect",
+		"text": [
+			"简报"
+		],
+		"preDelay": 2000,
+		"postDelay": 2000,
+		"action": "DoNothing"
+	},
+	"简报合上": {
+		"algorithm": "OcrDetect",
+		"rectMove": [ -350, 0, 10, 10 ],
+		"text": [
+			"简报"
+		],
+		"preDelay": 2000,
+		"postDelay": 2000,
+		"action": "ClickSelf"
+	},
+	
+	"副手简报": {
+		"algorithm": "OcrDetect",
+		"text": [
+			"简报"
+		],
+		"rectMove": [ -350, 0, 10, 10 ],
+		"sub": [
+			"简报截图"
+		],
+		"preDelay": 2000,
+		"postDelay": 2000,
+		"action": "ClickSelf"
+	},
+	"点击基建副手": {
+		"algorithm": "OcrDetect",
+		"text": [
+			"副手"
+		],
+		"preDelay": 2000,
+		"action": "ClickSelf",
+		"sub": [
+			"副手简报"
+		],
+		"postDelay": 2000
+	},
+	"进入控制中枢": {
+		"algorithm": "OcrDetect",
+		"text": [
+			"中枢"
+		],
+		"action": "ClickSelf",
+		"postDelay": 2000
+	},
+	"进驻总览上拉": {
+		"algorithm": "OcrDetect",
+		"text": [
+			"员信"
+		],
+		"postDelay": 1000,
+		"action": "Swipe",
+		"specificRect": [
+			600,
+			710,
+			100,
+			100
+		],
+		"rectMove": [
+			600,
+			140,
+			100,
+			100
+		],
+		"specialParams": [
+			300,
+			0,
+			0,
+			0
+		],
+		"specialParams_Doc": [
+			"滑动 duration",
+			"额外滑动？",
+			"slope in (zero means smooth, 1 means linear)",
+			"slope out"
+		],
+		"maxTimes": 50
+	}
+}
