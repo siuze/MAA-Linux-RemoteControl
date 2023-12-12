@@ -18,7 +18,7 @@
 ### 1、下载MAA的[linux发布版本](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases)，解压后放在某某路径（这一步是不是必须的我不知道，也许这个脚本面对空文件夹也能自动下载更新，我还没试过）
 ### 2、下载本项目源码
 ### 3、**修改源码文件夹`config-example`的名字为`config`**
-### 4、阅读并修改[`config`](./config_example/)文件夹下的几个配置文件，[`task.yaml`](./config_example/task.yaml)可以不动，但是**[`asst.yaml`](./config_example/task.yaml)一定要自己配置好**
+### 4、阅读并修改[`config`](./config_example/)文件夹下的几个配置文件，[`task.yaml`](./config_example/task.yaml)可以不动，但是[`asst.yaml`](./config_example/task.yaml)一定要自己配置好
 
 ###
 

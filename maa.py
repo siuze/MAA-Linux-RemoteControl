@@ -10,7 +10,7 @@ from asst.asst import Asst
 from asst.utils import Message, Version, InstanceOptionType
 from asst.updater import Updater
 
-from Qmsg import JustPrint as send_msg
+from Qmsg import send_msg
 # from Qmsg import send_qqimagedeliver as send_msg
 
 #记录日志
