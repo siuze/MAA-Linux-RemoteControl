@@ -110,7 +110,7 @@ class Asst:
 		return Asst.__lib.AsstSetInstanceOption(self.__ptr,
 												int(option_type), option_value.encode('utf-8'))
 
-	async def connect(self, adb_path: str, address: str, config: str = 'CompatPOSIXShell'):
+	def connect(self, adb_path: str, address: str, config: str = 'CompatPOSIXShell'):
 		"""
 		连接设备
 

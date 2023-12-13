@@ -47,6 +47,10 @@ def my_callback(msg, details, arg) -> None:
 			maa.start_log += text + '\n'
 		elif what == 'StageDrops':
 			maa.add_fight_msg(js['details'])
+		elif what == 'ScreencapFailed':
+			text = f"截图失败，可能是ADB配置出现问题或Android 11无线调试变化了端口，尝试重新连接"
+			lg.info(text)
+			maa.reconnect()
 	if maa.asst_config['python']['debug']:
 		lg.info(m)
 		lg.info(js)
@@ -57,6 +61,7 @@ class MAA:
 		self.start_log = 'MAA 明日方舟\n'	#启动信息
 		self.singal_task_log = ''			#单个任务的信息
 		self.fight_log = {'stages':{},'drops':{},'msg':''}	#作战信息
+		self.stop_tag = '正常'	#任务运行完成后会检查回调函数有没有给出报错，有的话重新执行
 		#MAA核心路径
 		self.core_path = Path(__file__).parent.parent / "MAA-linux"
 		os.environ['LD_LIBRARY_PATH'] = str(self.core_path)
@@ -118,19 +123,19 @@ class MAA:
 			exit(1)
 		self.asst_config["connection"]["port"] = int(port)
 
-	async def connect(self):
+	def connect(self):
 		"""
 		通过ADB连接到安卓设备
 		"""
 		#获取ADB端口
-		if self.asst_config['connection']:
+		if self.asst_config['connection']['scan_port']:
 			self.find_adb_wifi_port()
 
 		text = f'尝试连接到：{self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}'
 		lg.info(text)
 		self.start_log += text + '\n'
 
-		if await self.asst.connect(	adb_path = self.asst_config["connection"]["adb"], 
+		if self.asst.connect(	adb_path = self.asst_config["connection"]["adb"], 
 								address = f'{self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}', 
 								config = self.asst_config["connection"]["config"]
 							):
@@ -152,6 +157,11 @@ class MAA:
 			send_msg(self.start_log)
 			exit(1)
 
+	def reconnect(self):
+		self.start_log = 'ADB连接出错，尝试重连\n'
+		self.stop_tag = '需要重连'
+		self.asst.stop()
+
 	async def screenshot(self,file_name,rb=False): 
 		"""
 		调用MAA-CORE的API获取截图
@@ -169,6 +179,7 @@ class MAA:
 			return img
 		else:
 			return length
+
 
 
 	def add_fight_msg(self, detail):
@@ -199,11 +210,16 @@ class MAA:
 		逐个运行任务配置中填写的任务
 		"""
 		task_count = 0 #第task_count个任务
-		for task in self.tasks['tasks']:
-			task_count += 1
+		latest_official_task_count = 0 #记录最近执行的一个非custom任务的序号
+		while(task_count < len(self.tasks['tasks'])):
+			task = self.tasks['tasks'][task_count]
 			task_id = task_count
+			task_count += 1
+
 			if 'id' in task:
 				task_id = task['id']
+			if task['type'] != 'Custom':
+				latest_official_task_count = task_count
 
 			#重置单个任务日志
 			self.fight_log = {'stages':{},'drops':{},'msg':''}
@@ -247,6 +263,11 @@ class MAA:
 			while self.asst.running():
 				time.sleep(0)
 
+			if self.stop_tag == '需要重连':
+				self.connect()	#任务运行过程出错，重新尝试连接到adb
+				self.stop_tag == '正常'
+				task_count =  latest_official_task_count  #回到最近一次的非自定义任务，因为自定义任务目前还没办法自适应。必须跟在官方任务之后执行
+				continue
 			#运行后截图
 			if "screenshot" in task and (task['screenshot'] == 'after' or task['screenshot'] =='both'):
 				img_msg = await self.screenshot(f"after_{task['type']}_{task_id}",rb=True)
@@ -263,7 +284,7 @@ class MAA:
 		"""
 		入口函数，连接和运行任务
 		"""
-		await self.connect()
+		self.connect()
 		await self.run_tasks()
 
 maa = MAA()
