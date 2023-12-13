@@ -160,7 +160,9 @@ tasks:
         - 加急许可
 
   - type: Award
-
+    params:
+      award: true
+      mail: true
   - type: Custom
     id: 任务完成后主界面
     screenshot: after
