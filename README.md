@@ -12,7 +12,13 @@
  [x] 获取基建副手简报的截图（增加了一些自定义任务动作）  
  [x] 发送截图和日志到指定的请求地址实现通知消息  
 
-## 
+## 运行效果（通知效果）
+![QQ截图20231213104405](https://github.com/siuze/MAA-Linux-Python/assets/54578647/9c0c3a5f-d716-4d09-9fa2-f7b9f7b76d14)
+![QQ截图20231213104523](https://github.com/siuze/MAA-Linux-Python/assets/54578647/2408eda2-e384-430a-be92-b472cde3cdf4)
+![QQ截图20231213104321](https://github.com/siuze/MAA-Linux-Python/assets/54578647/e829e1ef-9df5-4a4a-a9c8-43ca083608d7)
+![QQ截图20231213104450](https://github.com/siuze/MAA-Linux-Python/assets/54578647/66c6084a-cf7c-4534-a8e8-6a3e86bc31f0)
+![QQ截图20231213104505](https://github.com/siuze/MAA-Linux-Python/assets/54578647/6b00bfe4-a77f-46a2-a1ca-2b81e331bf00)
+
 
 ## 使用方法
 ### 1、下载MAA的[linux发布版本](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases)，解压后放在某某路径（这一步是不是必须的我不知道，也许这个脚本面对空文件夹也能自动下载更新，我还没试过）
