@@ -80,7 +80,6 @@ def my_callback(msg, details, arg) -> None:
 class MAA:
 	def __init__(self) -> None:
 		# self.waiting_async = []
-		self.tasks_config = []
 		# self.error_threshold = 5
 		# self.error_count = 0
 		self.connect_log = ''
