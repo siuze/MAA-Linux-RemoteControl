@@ -1,7 +1,7 @@
 # MAA-Linux-RemoteControl
 就简称maa-lrc吧
 
-## maa-lrch使用Python实现无图形界面设备下远程控制[MAA](https://github.com/MaaAssistantArknights/MaaAssistantArknights)，运行明日方舟助手
+## maa-lrc使用Python实现无图形界面设备下远程控制[MAA](https://github.com/MaaAssistantArknights/MaaAssistantArknights)，运行明日方舟助手
  - 使用Websocket作为客户端连接到远程控制的服务端，对服务端下发的任务配置进行队列处理
  - 对每个子任务的运行结果进行回调报告，可以加入截图一并汇报
 
