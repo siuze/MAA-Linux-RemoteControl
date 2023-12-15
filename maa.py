@@ -441,9 +441,11 @@ def on_close(wsapp, close_status_code, close_reason):
 	lg.info(f"WS连接关闭 {close_status_code} {close_reason}")
 def ws_client():
 	global wsapp
+	with open(str(Path(__file__).parent / "config/asst.yaml"), 'r', encoding='utf8') as config_f:
+		ws_url = yaml.safe_load(config_f)['python']['ws']
 	while True:
 		try:
-			wsapp = websocket.WebSocketApp("ws://192.168.31.111:8068/maa",
+			wsapp = websocket.WebSocketApp(ws_url,
 									on_open=on_open,
 									on_message=on_message,
 									on_error=on_error,
