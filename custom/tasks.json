@@ -1,4 +1,80 @@
 {
+	"进入任务": {
+        "template": [
+            "Task.png", 
+            "TaskDark.png", 
+            "TaskSami.png", 
+            "TaskMistCity.png"
+        ], 
+        "cache": false, 
+        "templThreshold": 0.7, 
+        "action": "ClickSelf", 
+        "roi": [
+            700, 
+            530, 
+            130, 
+            130
+        ], 
+        "crop_doc": {
+            "roi": [
+                720, 
+                553, 
+                75, 
+                70
+            ], 
+            "mask": []
+        }
+    }, 
+    "日常任务": {
+		"template": [
+			"DailyTask.png"
+		],
+        "action": "ClickSelf", 
+        "cache": false, 
+        "roi": [
+            400, 
+            0, 
+            880, 
+            100
+        ]
+    }, 
+    "周常任务": {
+		"template": [
+			"WeeklyTask.png"
+		],
+        "action": "ClickSelf", 
+        "cache": false, 
+        "roi": [
+            400, 
+            0, 
+            880, 
+            100
+        ]
+    }, 
+
+
+	"检查公招详情是否打开": {
+		"algorithm": "OcrDetect",
+		"text": [
+			"职业"
+		],
+		"action": "DoNothing",
+		"maxTimes": 2,
+		"next": ["返回"],
+		"postDelay": 2000
+	},
+	"退出公招详情":{
+		"algorithm": "JustReturn",
+		"action": "DoNothing",
+		"subErrorIgnored": true,
+		"sub": [ "检查公招详情是否打开"],
+		"specificRect": [ 600, 35, 20, 20 ]
+	},
+	"退出信用商品详情":{
+		"algorithm": "JustReturn",
+		"action": "ClickRect",
+		"specificRect": [ 600, 35, 20, 20 ]
+	},
 	"点击进驻总览": {
 		"algorithm": "OcrDetect",
 		"text": [
@@ -110,5 +186,7 @@
 			"slope out"
 		],
 		"maxTimes": 50
-	}
+	},
+	"AccountManagerTrashButton": {}
+
 }

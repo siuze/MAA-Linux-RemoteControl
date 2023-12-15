@@ -172,7 +172,7 @@ class Updater:
 			"""
 			assets_name = assets["name"]		# 示例值:MAA-v4.24.0-beta.1-win-arm64.zip
 			# 正则匹配（用于选择当前系统及架构的版本）
-			# 在线等一个不这么蠢的方法
+			# 
 			pattern = r"^MAA-.*" + re.escape(system_platform) + r".*(gz|zip)"
 			match = re.match(pattern, assets_name)
 			if match:
@@ -196,7 +196,7 @@ class Updater:
 		latest_version, version_detail = self.get_latest_version()
 		self.custom_print(f"最新版本：{latest_version}")
 		self.custom_print(f"当前版本：{current_version}")
-		if not latest_version:					  # latest_version为False代表获取失败
+		if not latest_version:  # latest_version为False代表获取失败
 			self.custom_print("获取版本信息失败")
 		elif current_version == latest_version:	 # 通过比较二者是否一致判断是否需要更新（摆烂
 			self.custom_print("当前为最新版本，无需更新")
@@ -226,7 +226,7 @@ class Updater:
 					download_file(github_url,file)
 					# 调用downloader方法进行下载
 					# downloader.file_download(download_url_list=url_list, download_path=file,request_proxies=proxies)
-					break		   # RNM怎么会有这么蠢的人忘了写break啊淦
+					break		   #
 				except Exception as e:
 					Updater.custom_print(e)
 					if retry_frequency >= 9:

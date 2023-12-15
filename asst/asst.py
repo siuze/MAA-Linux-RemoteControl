@@ -134,17 +134,19 @@ class Asst:
 									  adb_path.encode('utf-8'), address.encode('utf-8'), config.encode('utf-8'))
 
 
-	async def screenshot(self):
+	def screenshot(self):
 		"""
+		发起截图请求，截图完成后会发起回调消息，然后再用get_img获取
 		"""
-		# loop = asyncio.get_event_loop()
-		# result = await loop.run_in_executor(
-		# 	None, Asst.__lib.AsstAsyncScreencap, self.__ptr, True
-		# )
-		# # result = Asst.__lib.AsstAsyncScreencap(self.__ptr, True)
-		# print(result)
+		result = Asst.__lib.AsstAsyncScreencap(self.__ptr, False)
+		print("发起截图请求",result)
+		return result
 
-		size = 1280 * 720 * 4
+	def get_img(self):
+		"""
+		读取缓存里的一张图片
+		"""
+		size = 1920 * 1080 * 4
 		buffer = bytes([0] * size) 
 		length = Asst.__lib.AsstGetImage(self.__ptr, buffer, size)
 		return buffer, length
