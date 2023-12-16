@@ -146,10 +146,28 @@ class Asst:
 		"""
 		读取缓存里的一张图片
 		"""
-		size = 1920 * 1080 * 4
+		size = 1280 * 720 * 4
 		buffer = bytes([0] * size) 
 		length = Asst.__lib.AsstGetImage(self.__ptr, buffer, size)
 		return buffer, length
+
+	def get_uuid(self):
+		"""
+		获取uuid
+		"""
+		size = 500
+		buffer = "0" * 500
+		length = Asst.__lib.AsstGetUUID(self.__ptr, buffer, size)
+		return buffer, length
+
+	def AsstDestroy(self):
+		"""
+		销毁
+		"""
+		Asst.__lib.AsstDestroy(self.__ptr)
+		return None
+
+
 
 	TaskId = int
 
@@ -283,3 +301,8 @@ class Asst:
 		# Asst.__lib.async_connect.restype = ctypes.c_int
 		# Asst.__lib.async_connect.argtypes = (
 		# 	ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool)
+		Asst.__lib.AsstGetUUID.restype = ctypes.c_int
+		Asst.__lib.AsstGetUUID.argtypes = (
+			ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int)
+		
+

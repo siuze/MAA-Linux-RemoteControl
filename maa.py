@@ -18,7 +18,8 @@ from threading import Thread
 
 lg.add(str(Path(__file__).parent / f"logs/log_{time.strftime('%Y-%m-%d', time.localtime()) }.log"), rotation="1 day")
 
-tasks_config = []
+tasks_config_waiting_list = []
+send_msg_waiting_list = []
 my_maa = None
 wsapp = None
 
@@ -79,6 +80,7 @@ def my_callback(msg, details, arg) -> None:
 
 class MAA:
 	def __init__(self) -> None:
+		global send_msg_waiting_list
 		# self.waiting_async = []
 		# self.error_threshold = 5
 		# self.error_count = 0
@@ -94,18 +96,29 @@ class MAA:
 			self.asst_config = yaml.safe_load(config_f)
 		#更新并加载核心和共享库
 		self.update_and_load()
+		recall = {
+					"payload": self.update_log,
+					"type": "notice",
+				}
+		send_msg_waiting_list.append(recall)
+
 
 	def update_and_load(self):
 		#更新版本
+		lg.info("进入版本更新与加载函数")
 		self.update_log = Updater(self.core_path, Version.Beta).update()
+		lg.info("更新结束")
 		#添加自定义任务模块
 		self.add_custom()
 		#加载资源
 		Asst.load(path=self.core_path, incremental_path=self.core_path / 'cache')
+		lg.info("加载资源结束")
 		#构造并设置回调函数
 		self.asst = Asst(callback=my_callback)
+		lg.info("构造结束")
 		#设置触控方式
 		self.asst.set_instance_option(InstanceOptionType.touch_type, self.asst_config['instance_options']['touch_mode'])
+		lg.info("加载完成")
 
 	def add_custom(self):
 		"""
@@ -256,12 +269,13 @@ class MAA:
 
 
 	def tasks_handler(self, data: dict):
-		global wsapp
+		global send_msg_waiting_list
 		config_name = data['name'] if 'name' in data else int(time.time())
 		lg.info(f"正在运行配置：{config_name}")
 		task_index = 0
 		success_tasks = []
 		while task_index < len(data['tasks']):
+			task_begin_time = time.time()
 			lg.info(f"正在处理第{task_index}个任务")
 			task = data['tasks'][task_index]
 			lg.info(task)
@@ -279,10 +293,11 @@ class MAA:
 			task_index += 1
 			self.fight_log = {'stages':{},'drops':{},'msg':''}
 			if task['type'] == 'Update':
-				lg.info("收到更新任务，调用初始化函数")
-				self.__init__()
+				lg.info("收到更新任务，调用更新和加载函数")
+				self.update_and_load()
+				recall['duration'] = int(time.time()-task_begin_time)
 				recall['payload'] = self.update_log
-				wsapp.send(json.dumps(recall, ensure_ascii=False))
+				# send_msg_waiting_list.append(recall)
 			else:
 				lg.info("当前已执行了的核心任务")
 				lg.info(success_tasks)
@@ -293,9 +308,10 @@ class MAA:
 				lg.info("运行任务前检查ADB连接情况")
 				if not self.connect():
 					lg.error("连接失败，放弃该配置的运行")
-					recall['status'] = "False"
+					recall['status'] = "FAILED"
 					recall['payload'] = self.connect_log
-					wsapp.send(json.dumps(recall, ensure_ascii=False))
+					recall['duration'] = int(time.time()-task_begin_time)
+					send_msg_waiting_list.append(recall)
 					break
 				lg.info("检查完毕：ADB连接正常")
 				lg.info("检查任务是否启用")
@@ -350,13 +366,16 @@ class MAA:
 				if self.stop_tag == '需要重连':
 					text = "任务运行过程出错，重新尝试连接到adb"
 					lg.error(text)
+					if recall['payload']:
+						recall['payload'] +=''
 					recall['payload'] += text + '\n'
 					if not self.connect(init=True):
 						text = "连接失败，放弃该配置的运行"
 						lg.error(text)
 						recall['status'] = "False"
 						recall['payload'] += self.connect_log + "\n" + text
-						wsapp.send(json.dumps(recall, ensure_ascii=False))
+						recall['duration'] = int(time.time()-task_begin_time)
+						send_msg_waiting_list.append(recall)
 						break
 					self.stop_tag = '正常'
 					task_index = 0
@@ -364,7 +383,8 @@ class MAA:
 					lg.error(text)
 					recall['payload'] += text
 					recall['status'] = "FAILED"
-					wsapp.send(json.dumps(recall, ensure_ascii=False))
+					recall['duration'] = int(time.time()-task_begin_time)
+					send_msg_waiting_list.append(recall)
 					continue
 				lg.info("检查是否需要在运行后截图")
 				if "screenshot" in task and (task['screenshot'] == 'after' or task['screenshot'] =='both'):
@@ -380,32 +400,33 @@ class MAA:
 					recall['image'] = base64.b64encode(img_msg).decode("utf-8")
 
 				lg.info("发送回调消息")
-				wsapp.send(json.dumps(recall, ensure_ascii=False))
+				recall['duration'] = int(time.time()-task_begin_time)
+				send_msg_waiting_list.append(recall)
 
 				lg.info("清理任务队列，等待后续任务执行")
 				self.asst.stop()
 
 
 
-def handle_tasks_config():
+def handle_tasks_config_waiting_list():
 	global my_maa
-	global tasks_config
+	global tasks_config_waiting_list
 	lg.info("启用配置队列轮询处理")
 	sleep_state =True
 	while True:
 		try:
 			time.sleep(10)
-			if len(tasks_config):
+			if len(tasks_config_waiting_list):
 				if sleep_state or my_maa == None:
 					lg.info("激活MAA")
 					my_maa = MAA()
 					my_maa.connect(init=True)
 					sleep_state =False
 				lg.info("还有尚未完成的任务配置，将队列中的第一个提交到处理函数中")
-				my_maa.tasks_handler(data=tasks_config[0]['data'])
+				my_maa.tasks_handler(data=tasks_config_waiting_list[0]['data'])
 				lg.info("该配置处理完成，将其清理出队列")
-				tasks_config.pop(0)
-				lg.info(f"队列中剩余{len(tasks_config)}个任务配置")
+				tasks_config_waiting_list.pop(0)
+				lg.info(f"队列中剩余{len(tasks_config_waiting_list)}个任务配置")
 			else:
 				if not sleep_state:
 					lg.info(f"任务配置队列已全部处理完")
@@ -417,7 +438,19 @@ def handle_tasks_config():
 		except Exception as e:
 			lg.error(traceback.format_exc())
 
-
+def handle_send_msg_waiting_list():
+	global wsapp
+	global send_msg_waiting_list
+	lg.info("启用消息队列轮询发送")
+	while True:
+		try:
+			if len(send_msg_waiting_list):
+				wsapp.send(json.dumps(send_msg_waiting_list[0], ensure_ascii=False))
+				send_msg_waiting_list.pop(0)
+		except Exception as e:
+			lg.error(traceback.format_exc())
+		finally:
+			time.sleep(1) #需要sleep一下减少CPU占用
 
 def on_open(wsapp):
     lg.info("MAA成功连接到WS服务端")
@@ -427,14 +460,14 @@ def on_message(wsapp, msg):
 	try:
 		data = json.loads(msg)
 	except ValueError:
-		wsapp.send(json.dumps({'type':'receipt','payload':'收到的消息无法通过json格式化'}, ensure_ascii=False))
-	tasks_config.append({"data":data,"ws":wsapp})
+		send_msg_waiting_list.append({'type':'receipt','payload':'收到的消息无法通过json格式化'})
+	tasks_config_waiting_list.append({"data":data,"ws":wsapp})
 	recall = {
 			"status": "SUCCESS",
-			"payload": "MAA已收到一条任务配置，加入任务处理队列中逐个运行",
+			"payload": "MAA已收到一条任务配置，加入任务处理队列等待运行",
 			"type": "receipt",
 		}
-	wsapp.send(json.dumps(recall, ensure_ascii=False))
+	send_msg_waiting_list.append(recall)
 def on_error(wsapp, e):
 	lg.error(f"WS连接出错 {e}")
 def on_close(wsapp, close_status_code, close_reason):
@@ -460,12 +493,16 @@ def ws_client():
 
 # 创建 Thread 实例
 WS客户端线程 = Thread(target=ws_client, args=())
-MAA任务配置处理队列 = Thread(target=handle_tasks_config, args=())
+WS待发送消息队列 = Thread(target=handle_send_msg_waiting_list, args=())
+
+MAA任务配置处理队列 = Thread(target=handle_tasks_config_waiting_list, args=())
 
 # 启动线程运行
 WS客户端线程.start()
+WS待发送消息队列.start()
 MAA任务配置处理队列.start()
 
-# 等待所有线程执行完毕
+
 WS客户端线程.join()
+WS待发送消息队列.join()
 MAA任务配置处理队列.join()

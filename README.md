@@ -191,6 +191,7 @@ maa-lrc每次只能接收一个json文本，并会解析为一个任务配置加
 	"status": "SUCCESS", //运行结果，目前出错识别尚未完善，大多数时候都是SUCCESS，少数时候是FAILED
 	"payload": "作战结果：\n  RS-5 * 1 \n战斗掉落：\n  驮兽盲盒 * 12\n  固源岩 * 2\n  龙门币 * 144",  //日志文本信息，基本上没什么日志，maa-gui-rc里还会放图片，这里不会，图片放在下面的image里面
 	"image": "iVBORw0KGgoAAAANSUhEUgAABQAAA...", //截图，如果有的话是图片的base64编码，没有的话就是空字符串""
+	"duration": 300, //任务运行耗时，单位秒
 	"type": "recall", //消息类型 一般为任务汇报消息"recall"
 	"name": config_name
 }
@@ -203,7 +204,13 @@ maa-lrc每次只能接收一个json文本，并会解析为一个任务配置加
 			"type": "receipt", //服务器下发的消息收到后的回执"receipt"
 		}
 ```
-
+或
+```json
+	{
+			"payload": "日志内容"
+			"type": "notice", //一些日志通知，目前只有MAA激活的时候的版本更新日志
+		}
+```
 
 ## 运行过程简要说明
 程序主要通过全局变量来进行内部沟通  
@@ -214,7 +221,8 @@ maa-lrc每次只能接收一个json文本，并会解析为一个任务配置加
 
 ## 已知问题
  - 使用`Ctrl+C`强制退出程序后再次运行时可能报出C的内存相关错误`double free or corruption (out)`，目前就暂时多强制退出再运行几次吧   
- - ws的重连和错误处理尚未完善
+ - MAA内存释放后可能无法正常激活，还在复现bug中   
+ - ws的重连和错误处理尚未完善   
   
     
   

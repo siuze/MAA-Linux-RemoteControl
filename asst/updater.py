@@ -189,11 +189,13 @@ class Updater:
 		主函数
 		"""
 		global update_log
+		update_log = ""
 		# 从dll获取MAA的版本
 		current_version = self.cur_version
 		# 从API获取最新版本
 		# latest_version：版本号; version_detail：对应的json地址
 		latest_version, version_detail = self.get_latest_version()
+		self.custom_print(f"MaaAssistantArknights")
 		self.custom_print(f"最新版本：{latest_version}")
 		self.custom_print(f"当前版本：{current_version}")
 		if not latest_version:  # latest_version为False代表获取失败
@@ -201,7 +203,7 @@ class Updater:
 		elif current_version == latest_version:	 # 通过比较二者是否一致判断是否需要更新（摆烂
 			self.custom_print("当前为最新版本，无需更新")
 		else:
-			self.custom_print(f"检测到最新版本:{latest_version}，正在更新")
+			self.custom_print(f"检测到版本差异，正在更新...")
 			# 开始更新逻辑
 			# 解析version_detail的JSON信息
 			# 通过API获取下载地址列表和对应文件名
@@ -217,7 +219,7 @@ class Updater:
 			file = os.path.join(self.path, filename)
 			# 下载，调用Downloader下载器，使用url_list（镜像url列表）和file（文件保存路径）两个参数
 			# Proxy参数没加，因为可能有问题（也可能没问题反正我晚上Clash连不上）
-			# 重试3次
+			# 重试10次
 			max_retry = 10
 			for retry_frequency in range(max_retry):
 				try:
@@ -233,7 +235,7 @@ class Updater:
 						exit(1)
 
 			# 解压下载的文件，
-			Updater.custom_print('开始安装更新，请不要关闭')
+			Updater.custom_print('开始解压更新包')
 			file_extension = os.path.splitext(filename)[1]
 			unzip = False
 			# 根据拓展名选择解压算法
@@ -256,7 +258,7 @@ class Updater:
 			else:
 				Updater.custom_print('更新未完成')
 
-		self.custom_print(f"尝试OTA热更新下载活动关导航")
+		self.custom_print(f"尝试OTA热更新资源")
 		ota_tasks_url = 'https://ota.maa.plus/MaaAssistantArknights/api/resource/tasks.json'
 		ota_tasks_path = self.path / 'cache' / 'resource' / 'tasks.json'
 		ota_tasks_path.parent.mkdir(parents=True, exist_ok=True)
@@ -267,5 +269,4 @@ class Updater:
 				关卡 += key + '、'
 			self.custom_print(f"获取到信息：{关卡[:-1]}")
 			f.write(response.text)
-		self.custom_print(f"热更新完成")
 		return update_log
