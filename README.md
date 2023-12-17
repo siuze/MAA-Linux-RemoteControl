@@ -23,15 +23,32 @@
 
 
 
-## 运行效果（通知效果）
-![QQ截图20231213104405](https://github.com/siuze/MAA-Linux-Python/assets/54578647/9c0c3a5f-d716-4d09-9fa2-f7b9f7b76d14)
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/f63fd0d4-05c9-4963-8004-41ed78ec53f5)
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/eccf2591-7ec4-4f74-b8cc-ee31e2df92bb)
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/31ac2862-7034-402c-a591-9d6d5f724370)
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/4f7b33eb-6f7c-4f9b-aff9-d8209d48ade0)
+## 运行效果（使用Nonebot构建的QQ机器人下对MAA-LRC推送的回调消息进行通知）
+激活MAA时自动更新  
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/43689b49-ed8b-4224-ba16-7462c38bf994)
+  
+启动游戏  
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/137c56c6-c3cd-47a8-8017-1189162501cc)
+  
+作战总结  
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/05a246d8-2e5b-4560-9404-f0403ada1f12)
+  
+基建排班  
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/99689c39-4eb0-4c81-9033-b24b3c675100)
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/a46ad2a0-d7c5-4c9d-9d6f-4a47b2573f73)
+  
+基建简报   
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/2b0838c0-98f0-495e-8aeb-6d325a6fdc7d)
 
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/8add8f59-55e6-4589-9697-4d8e1097d3ea)
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/73c13f00-205b-4419-a36a-ae1212a7e697)
+信用商店  
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/7095b36f-7b7b-4b55-801c-4756eccad7bc)
+
+公开招募  
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/ca55a62e-5039-4d98-891a-cb11d74c4794)
+
+任务奖励    
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/9a1b2688-addf-4db0-987c-981decfb33a3)
+
 
 
 ## 使用方法
