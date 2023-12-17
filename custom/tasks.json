@@ -1,86 +1,84 @@
 {
-	"进入日常任务":{
-		"algorithm": "JustReturn", 
-        "action": "DoNothing", 
-		"sub": ["ReturnButton","进入任务"],
-		"next":["日常任务"]
+	"进入日常任务": {
+		"algorithm": "JustReturn",
+		"action": "DoNothing",
+		"sub": [
+			"进入任务"
+		],
+		"next": [
+			"日常任务"
+		]
 	},
-	"进入周常任务":{
-		"algorithm": "JustReturn", 
-        "action": "DoNothing", 
-		"sub": ["ReturnButton","进入任务"],
-		"next":["周常任务"]
+	"进入周常任务": {
+		"algorithm": "JustReturn",
+		"action": "DoNothing",
+		"sub": [
+			"进入任务"
+		],
+		"next": [
+			"周常任务"
+		]
+	},
+	"点击任务图标": {
+		"template": [
+			"Task.png",
+			"TaskDark.png",
+			"TaskSami.png",
+			"TaskMistCity.png"
+		],
+		"cache": false,
+		"templThreshold": 0.7,
+		"action": "ClickSelf",
+		"roi": [
+			700,
+			530,
+			130,
+			130
+		],
+		"crop_doc": {
+			"roi": [
+				720,
+				553,
+				75,
+				70
+			],
+			"mask": []
+		}
 	},
 	"进入任务": {
-        "template": [
-            "Task.png", 
-            "TaskDark.png", 
-            "TaskSami.png", 
-            "TaskMistCity.png"
-        ], 
-        "cache": false, 
-        "templThreshold": 0.7, 
-        "action": "ClickSelf", 
-        "roi": [
-            700, 
-            530, 
-            130, 
-            130
-        ], 
-        "crop_doc": {
-            "roi": [
-                720, 
-                553, 
-                75, 
-                70
-            ], 
-            "mask": []
-        }
-    }, 
-    "日常任务": {
+		"algorithm": "JustReturn",
+		"action": "DoNothing",
+		"sub": [
+			"StartUp",
+			"点击任务图标"
+		],
+		"next": []
+	},
+	"日常任务": {
 		"template": [
 			"DailyTask.png"
 		],
-        "action": "ClickSelf", 
-        "cache": false, 
-        "roi": [
-            400, 
-            0, 
-            880, 
-            100
-        ]
-    }, 
-    "周常任务": {
+		"action": "ClickSelf",
+		"cache": false,
+		"roi": [
+			400,
+			0,
+			880,
+			100
+		]
+	},
+	"周常任务": {
 		"template": [
 			"WeeklyTask.png"
 		],
-        "action": "ClickSelf", 
-        "cache": false, 
-        "roi": [
-            400, 
-            0, 
-            880, 
-            100
-        ]
-    }, 
-
-
-	"检查公招详情是否打开": {
-		"algorithm": "OcrDetect",
-		"text": [
-			"职业"
-		],
-		"action": "DoNothing",
-		"maxTimes": 2,
-		"next": ["返回"],
-		"postDelay": 2000
-	},
-	"退出公招详情":{
-		"algorithm": "JustReturn",
-		"action": "DoNothing",
-		"subErrorIgnored": true,
-		"sub": [ "检查公招详情是否打开"],
-		"specificRect": [ 600, 35, 20, 20 ]
+		"action": "ClickSelf",
+		"cache": false,
+		"roi": [
+			400,
+			0,
+			880,
+			100
+		]
 	},
 	"点击进驻总览": {
 		"algorithm": "OcrDetect",
@@ -90,37 +88,26 @@
 		"action": "ClickSelf",
 		"postDelay": 2000
 	},
-	"进入进驻总览":{
-		
-		"algorithm": "JustReturn", 
-        "action": "DoNothing", 
-		"sub": ["InfrastBegin","点击进驻总览"],
-		"next":[]
-	},
-	"返回": {
-		"template": [
-			"Return.png",
-			"Return-White.png"
+	"进入进驻总览": {
+		"algorithm": "JustReturn",
+		"action": "DoNothing",
+		"sub": [
+			"InfrastBegin",
+			"点击进驻总览"
 		],
-		"templThreshold": [
-			0.7,
-			0.8
-		],
-		"action": "ClickSelf",
-		"cache": false,
-		"roi": [
-			0,
-			0,
-			180,
-			80
-		]
+		"next": []
 	},
 	"简报开合": {
 		"algorithm": "OcrDetect",
 		"text": [
 			"简报"
 		],
-		"rectMove": [ -350, 0, 10, 10 ],
+		"rectMove": [
+			-350,
+			0,
+			10,
+			10
+		],
 		"preDelay": 2000,
 		"postDelay": 2000,
 		"action": "ClickSelf"
@@ -134,18 +121,26 @@
 		"action": "ClickSelf",
 		"postDelay": 2000
 	},
-	"点开基建简报":{
-		"algorithm": "JustReturn", 
-        "action": "DoNothing", 
-		"sub": ["进入控制中枢","点击基建副手","简报开合"],
-		"next":[]
+	"点开基建简报": {
+		"algorithm": "JustReturn",
+		"action": "DoNothing",
+		"sub": [
+			"InfrastBegin",
+			"进入控制中枢",
+			"点击基建副手",
+			"简报开合"
+		],
+		"next": []
 	},
-	"进入控制中枢":{
-		
-		"algorithm": "JustReturn", 
-        "action": "DoNothing", 
-		"sub": ["InfrastBegin"],
-		"next":["InfrastControl","InfrastControlMini"]
+	"进入控制中枢": {
+		"algorithm": "OcrDetect",
+		"text": [
+			"中枢"
+		],
+		"action": "ClickSelf",
+		"postDelay": 3000,
+		"sub": [],
+		"next": []
 	},
 	"进驻总览上拉": {
 		"algorithm": "JustReturn",
@@ -178,5 +173,4 @@
 		"maxTimes": 50
 	},
 	"AccountManagerTrashButton": {}
-
 }
