@@ -9,6 +9,7 @@ import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from loguru import logger as lg
+import gc
 
 from .asst import Asst
 from .utils import Version
@@ -57,19 +58,30 @@ class Updater:
 		q.put(Asst().get_version())
 
 	def __init__(self, path, version):
+		lg.info('进入Update构造函数')
 		self.path = path
 		self.version = version
 		self.latest_json = None
 		self.latest_version = None
 		self.assets_object = None
 
+
+		lg.info('Asst.load加载资源')
+		Asst.load(path=path)
+		lg.info('Asst构造')
+		asst = Asst()
+		lg.info('Asst获取版本')
+		self.cur_version = asst.get_version()
+		lg.info('清理Asst')
+		del asst
+		gc.collect()
 		# 使用子线程获取当前版本后关闭，避免占用dll
-		q = queues.Queue(1, ctx=multiprocessing)
-		p = Process(target=self._get_cur_version, args=(path, q,))
-		p.start()
-		p.join()
-		# MAA当前版本 self.cur_version
-		self.cur_version = q.get()
+		# q = queues.Queue(1, ctx=multiprocessing)
+		# p = Process(target=self._get_cur_version, args=(path, q,))
+		# p.start()
+		# p.join()
+		# # MAA当前版本 self.cur_version
+		# self.cur_version = q.get()
 
 	@staticmethod
 	def map_version_type(version):
@@ -188,6 +200,7 @@ class Updater:
 		"""
 		主函数
 		"""
+		lg.info('进入update主函数')
 		global update_log
 		update_log = ""
 		# 从dll获取MAA的版本
