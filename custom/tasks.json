@@ -2,6 +2,7 @@
 	"进入日常任务": {
 		"algorithm": "JustReturn",
 		"action": "DoNothing",
+		"subErrorIgnored": true,
 		"sub": [
 			"进入任务"
 		],
@@ -12,6 +13,7 @@
 	"进入周常任务": {
 		"algorithm": "JustReturn",
 		"action": "DoNothing",
+		"subErrorIgnored": true,
 		"sub": [
 			"进入任务"
 		],
@@ -48,8 +50,9 @@
 	"进入任务": {
 		"algorithm": "JustReturn",
 		"action": "DoNothing",
+		"subErrorIgnored": true,
 		"sub": [
-			"StartUp",
+			"ReturnButtons",
 			"点击任务图标"
 		],
 		"next": []
