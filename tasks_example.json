@@ -1,290 +1,246 @@
 {
-	"name": "测试配置",
+	"name": "示例配置",
 	"tasks": [
-	  {
-		"type": "CloseDown"
-	  },
-	  {
-		"type": "StartUp",
-		"id": "明日方舟启动",
-		"screenshot": "after",
-		"params": {
-		  "client_type": "Official",
-		  "start_game_enabled": true,
-		  "account_name": "123"
+		{
+			"type": "CloseDown",
+			"id": "关闭游戏重启"
 		},
-		"说明": "目前MAA用account_name参数换号好像识别有问题，我对任务动作和识别用的模板图片修了一下，只保证能在我的设备上使用。要真的修复还是等官方吧"
-	  },
-	  {
-		"type": "Fight",
-		"id": "每周剿灭",
-		"screenshot": "after",
-		"params": {
-		  "expiring_medicine": 1000,
-		  "stage": "Annihilation",
-		  "times": 5
+		{
+			"type": "StartUp",
+			"id": "明日方舟启动",
+			"screenshot": "after",
+			"params": {
+				"client_type": "Official",
+				"start_game_enabled": true,
+				"account_name": "123"
+			}
 		},
-		"condition": {
-		  "weekday": [
-			1
-		  ]
+		{
+			"type": "Fight",
+			"id": "每周剿灭",
+			"screenshot": "after",
+			"enable": true,
+			"params": {
+				"expiring_medicine": 1000,
+				"stage": "Annihilation",
+				"times": 5
+			},
+			"condition": {
+				"weekday": [
+					1
+				]
+			}
+		},
+		{
+			"type": "Fight",
+			"enable": true,
+			"id": "活动关卡",
+			"screenshot": "after",
+			"params": {
+				"expiring_medicine": 1000,
+				"stage": "RS-5"
+			}
+		},
+		{
+			"type": "Fight",
+			"id": "1-7",
+			"enable": false,
+			"screenshot": "after",
+			"params": {
+				"expiring_medicine": 1000,
+				"stage": "1-7"
+			}
+		},
+		{
+			"type": "Recruit",
+			"id": "公招任务",
+			"params": {
+				"refresh": true,
+				"select": [
+					6,
+					5,
+					4,
+					3
+				],
+				"confirm": [
+					6,
+					5,
+					4,
+					3
+				],
+				"times": 3
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "公招",
+			"说明": "重新进入公招界面截个图，因为公招券不够的时候上一步会停留在公招选项标签详情的窗口出",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"RecruitBegin"
+				]
+			}
+		},
+		{
+			"type": "Infrast",
+			"id": "基建",
+			"screenshot": "after",
+			"params": {
+				"facility": [
+					"Mfg",
+					"Trade",
+					"Power",
+					"Control",
+					"Reception",
+					"Office",
+					"Dorm"
+				],
+				"drones": "Money",
+				"threshold": 0.3,
+				"replenish": true,
+				"dorm_notstationed_enabled": false,
+				"dorm_trust_enabled": true
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "进驻总览1F",
+			"screenshot": "after",
+			"说明": "截几张图",
+			"params": {
+				"task_names": [
+					"进入进驻总览"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "进驻总览B1",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"进驻总览上拉"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "进驻总览B2",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"进驻总览上拉"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "进驻总览B3",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"进驻总览上拉"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "进驻总览B4",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"进驻总览上拉"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "基建简报",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"点开基建简报"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "基建合上",
+			"params": {
+				"task_names": [
+					"简报开合"
+				]
+			}
+		},
+		{
+			"type": "Mall",
+			"id": "信用",
+			"screenshot": "after",
+			"params": {
+				"shopping": true,
+				"buy_first": [
+					"招聘许可",
+					"固源岩",
+					"装置",
+					"龙门币",
+					"家具零件"
+				],
+				"blacklist": [
+					"加急许可"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "信用商店",
+			"screenshot": "after",
+			"说明": "重新进入信用商店截个图",
+			"params": {
+				"task_names": [
+					"MallBegin"
+				]
+			}
+		},
+		{
+			"type": "Award",
+			"params": {
+				"award": true,
+				"mail": true
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "日常任务",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"进入日常任务"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "周常任务",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"进入周常任务"
+				]
+			}
+		},
+		{
+			"type": "Custom",
+			"id": "任务完成后主界面",
+			"screenshot": "after",
+			"params": {
+				"task_names": [
+					"ReturnButton"
+				]
+			}
+		},
+		{
+			"type": "CloseDown"
 		}
-	  },
-	  {
-		"type": "Fight",
-		"id": "1-7",
-		"enable": false,
-		"screenshot": "after",
-		"params": {
-		  "expiring_medicine": 1000,
-		  "stage": "1-7"
-		}
-	  },
-	  {
-		"type": "Fight",
-		"enable": true,
-		"id": "活动关卡",
-		"screenshot": "after",
-		"params": {
-		  "expiring_medicine": 1000,
-		  "stage": "RS-5"
-		}
-	  },
-	  {
-		"type": "Recruit",
-		"id": "公招任务",
-		"screenshot": "after",
-		"params": {
-		  "refresh": true,
-		  "select": [
-			5,
-			4,
-			3
-		  ],
-		  "confirm": [
-			5,
-			4,
-			3
-		  ],
-		  "times": 3
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "公招",
-		"screenshot": "after",
-		"说明": "这个任务必须跟在Recruit后面才能为公招界面截图",
-		"params": {
-			"task_names": [
-				"退出公招详情"
-			  ]
-		}
-	  },
-	  {
-		"type": "Infrast",
-		"id": "基建",
-		"screenshot": "after",
-		"params": {
-		  "facility": [
-			"Mfg",
-			"Trade",
-			"Power",
-			"Control",
-			"Reception",
-			"Office",
-			"Dorm"
-		  ],
-		  "drones": "Money",
-		  "threshold": 0.3,
-		  "replenish": true,
-		  "dorm_notstationed_enabled": false,
-		  "dorm_trust_enabled": true
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "点击进驻总览",
-		"screenshot": "after",
-		"说明": "这个任务必须跟在Infrast后面才能点进进驻总览按钮",
-		"params": {
-		  "task_names": [
-			"点击进驻总览"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "进驻总览1F",
-		"说明": "这个任务必须跟在点击进驻总览后面才能滑动进驻总览并截图，下同",
-		"screenshot": "after",
-		"params": {
-		  "task_names": [
-			"进驻总览上拉"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "进驻总览B1",
-		"screenshot": "after",
-		"params": {
-		  "task_names": [
-			"进驻总览上拉"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "进驻总览B2",
-		"screenshot": "after",
-		"params": {
-		  "task_names": [
-			"进驻总览上拉"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "进驻总览B3",
-		"screenshot": "after",
-		"params": {
-		  "task_names": [
-			"进驻总览上拉"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "进驻总览B4",
-		"screenshot": "after",
-		"params": {
-		  "task_names": [
-			"进驻总览上拉"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "返回基建",
-		"params": {
-		  "task_names": [
-			"返回"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "进入控制中枢",
-		"说明": "这个任务必须跟在基建默认页面之后才能正常执行，所以上面有一个返回任务动作",
-		"params": {
-		  "task_names": [
-			"进入控制中枢"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "基建副手",
-		"说明": "这个任务必须跟在进入控制中枢之后才能正常执行，目的是点开基建副手查看简报并展开",
-		"params": {
-		  "task_names": [
-			"点击基建副手"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "基建简报",
-		"说明": "这个任务必须跟在点击基建副手才能正常执行，目的是给展开的简报截个图并合上，这个流程需要优化，之前是因为不能实时截图所以写得很复杂",
-		"screenshot": "before", 
-		"params": {
-		  "task_names": [
-			"简报合上"
-		  ]
-		}
-	  },
-	  {
-		"type": "Mall",
-		"id": "信用",
-		"screenshot": "after",
-		"params": {
-		  "shopping": true,
-		  "buy_first": [
-			"招聘许可",
-			"固源岩",
-			"装置",
-			"龙门币",
-			"家具零件"
-		  ],
-		  "blacklist": [
-			"加急许可"
-		  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "信用商店",
-		"screenshot": "after",
-		"说明": "这个任务必须跟在Mall之后才能正常执行，目的是关掉商品详情的窗口豪给信用商店截图",
-		"params": {
-			"task_names": [
-				"退出信用商品详情"
-			  ]
-		}
-	  },
-	  {
-		"type": "Award",
-		"params": {
-		  "award": true,
-		  "mail": true
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "进入任务",
-		"screenshot": "after",
-		"说明": "这个任务必须在主界面才能正常执行，目的是进入任务奖励领取界面准备截图",
-		"params": {
-			"task_names": [
-				"进入任务"
-			  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "日常任务",
-		"screenshot": "after",
-		"说明": "这个任务必须在奖励领取界面才能正常执行，目的是截图",
-		"params": {
-			"task_names": [
-				"日常任务"
-			  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "周常任务",
-		"screenshot": "after",
-		"说明": "这个任务必须在奖励领取界面才能正常执行，目的是截图",
-		"params": {
-			"task_names": [
-				"周常任务"
-			  ]
-		}
-	  },
-	  {
-		"type": "Custom",
-		"id": "任务完成后主界面",
-		"说明": "这个任务必须目的是回到主界面截最后一张图",
-		"screenshot": "after",
-		"params": {
-		  "task_names": [
-			"ReturnButton"
-		  ]
-		}
-	  },
-	  {
-		"type": "CloseDown"
-	  }
 	]
-  }
+},

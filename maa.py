@@ -302,8 +302,8 @@ class MAA:
 				lg.info("当前已执行了的核心任务")
 				lg.info(success_tasks)
 				if task_index-1 in success_tasks:
-					if task_index-1 != success_tasks[-1]:
-						lg.info("跳过非最后一个已执行了的任务")
+					# if task_index-1 != success_tasks[-1]:
+						lg.info("跳过已执行了的任务")
 						continue
 				lg.info("运行任务前检查ADB连接情况")
 				if not self.connect():
