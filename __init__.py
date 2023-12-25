@@ -1,0 +1,79 @@
+import faulthandler
+faulthandler.enable()
+from pathlib import Path
+import json
+import time
+import traceback
+from loguru import logger as lg
+import gc
+from threading import Thread
+
+lg.add(str(Path(__file__).parent / f"logs/log_{time.strftime('%Y-%m-%d', time.localtime()) }.log"), rotation="1 day")
+
+from cache import read_cache, save_cache
+from maa import MAA
+from ws import ws_client
+
+
+from _global import global_var
+
+
+
+def handle_tasks_config_waiting_queue():
+	lg.info("启用配置队列轮询处理")
+	sleep_state =True
+	while True:
+		try:
+			time.sleep(10)
+			if not global_var.get("tasks_config_waiting_queue").empty():
+				if sleep_state or global_var.get("my_maa") == None:
+					lg.info("激活MAA")
+					global_var.set("my_maa", MAA())
+					global_var.get("my_maa").connect(init=True)
+					sleep_state =False
+				lg.info("还有尚未完成的任务配置，将队列中的第一个提交到处理函数中")
+				global_var.get("my_maa").tasks_handler(data=global_var.get("tasks_config_waiting_queue").queue[0]['data'])
+				lg.info("该配置处理完成，将其清理出队列")
+				global_var.get("tasks_config_waiting_queue").get()
+				save_cache()
+				lg.info(f"队列中剩余{global_var.get('tasks_config_waiting_queue').qsize()}个任务配置")
+			else:
+				if not sleep_state:
+					lg.info(f"任务配置队列已全部处理完")
+					lg.info(f"清理内存，删除MAA实例，进入休眠模式")
+					global_var._del("my_maa")
+					sleep_state = True
+					global_var.set("my_maa", None)
+		except Exception as e:
+			lg.error(traceback.format_exc())
+
+def handle_send_msg_waiting_queue():
+	lg.info("启用消息队列轮询发送")
+	while True:
+		try:
+			if not global_var.get("send_msg_waiting_queue").empty():
+				global_var.get("wsapp").send(json.dumps(global_var.get("send_msg_waiting_queue").queue[0], ensure_ascii=False))
+				global_var.get("send_msg_waiting_queue").get()
+				save_cache()
+		except Exception as e:
+			lg.error(traceback.format_exc())
+		finally:
+			time.sleep(1) #需要sleep一下减少CPU占用
+
+
+read_cache()
+# 创建 Thread 实例
+WS客户端线程 = Thread(target=ws_client, args=())
+WS待发送消息队列 = Thread(target=handle_send_msg_waiting_queue, args=())
+
+MAA任务配置处理队列 = Thread(target=handle_tasks_config_waiting_queue, args=())
+
+# 启动线程运行
+WS客户端线程.start()
+WS待发送消息队列.start()
+MAA任务配置处理队列.start()
+
+
+WS客户端线程.join()
+WS待发送消息队列.join()
+MAA任务配置处理队列.join()

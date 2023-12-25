@@ -10,5 +10,6 @@ instance_options:
 
 python:
   debug: true #打开后会输出很多来自maa-core的日志
+  auto_update: true #打开后会在每次maa激活时自动检查内核版本并更新，包含OTA，当内核版本发生更新后会自动退出程序等待外部重启
   proxy:  http://127.0.0.1:7890 #下载更新的时候配置的代理，可以留空但请确保可以访问github，其他镜像源有点问题，所以我强制只从github下载了
   ws: ws://127.0.0.1:8888/maa  #连接到服务端的地址

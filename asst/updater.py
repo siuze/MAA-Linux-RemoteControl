@@ -202,6 +202,7 @@ class Updater:
 		"""
 		lg.info('进入update主函数')
 		global update_log
+		do_updated = False
 		update_log = ""
 		# 从dll获取MAA的版本
 		current_version = self.cur_version
@@ -268,6 +269,7 @@ class Updater:
 			os.remove(file)
 			if unzip:
 				Updater.custom_print('更新完成')
+				do_updated = True
 			else:
 				Updater.custom_print('更新未完成')
 
@@ -278,8 +280,19 @@ class Updater:
 		with open(ota_tasks_path, 'w', encoding='utf-8') as f:
 			response = requests.get(ota_tasks_url, proxies=proxies, verify=False)
 			关卡 = ''
+			added_key = []
 			for key in response.json():
-				关卡 += key + '、'
+				new = True
+				for added in added_key:
+					if added in key:
+						new = False
+						break
+				if new:
+					关卡 += key + '、'
+					added_key.append(key)
 			self.custom_print(f"获取到信息：{关卡[:-1]}")
 			f.write(response.text)
-		return update_log
+		# lg.info('重载Asst')
+		# self.asst.reload()
+
+		return do_updated,update_log

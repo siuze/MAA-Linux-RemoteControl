@@ -66,9 +66,11 @@ requests==2.31.0
 websocket-client==1.7.0
 ```
 ### 6、运行
+在项目主文件夹下运行：
 ```
-python maa.py
+python __init__.py
 ```
+
 
 ## 交互协议
 ### 服务端下发任务
@@ -166,9 +168,10 @@ maa-lrc每次只能接收一个json文本，并会解析为一个任务配置加
 
 
 #### 本项目中新增的任务：  
- - Update 更新MAA版本，这个任务一般不用加在日常配置里面，因为每次激活MAA都会自动检查并更新版本。   
+ - Update 更新MAA版本，目前还没测试完善。这个任务一般不用加在日常配置里面，因为每次激活MAA都会自动检查并更新版本。   
  - Screenshot 立即获取截图（尚未实现）  
-     
+ - Stop_config 立即停止当前运行的配置（尚未实现）  
+ - Stop 立即停止正在运行的所有配置（尚未实现）  
   
 
 
@@ -201,11 +204,26 @@ maa-lrc每次只能接收一个json文本，并会解析为一个任务配置加
 或
 ```json
 	{
-			"payload": "日志内容"
-			"type": "notice", //一些日志通知，目前只有MAA激活的时候的版本更新日志
+			"status": "BEGIN", // BEGIN | END
+			"payload": "2023-12-25 12:00:13\n开始运行配置：测试配置",
+			"type": "config_notice", //每组任务配置开始和结束运行的通知
 		}
 ```
-
+或
+```json
+	{
+			"status": "UPDATED", // UPDATED | LATEST 更新了或者不用更新
+			"payload": "一些更新日志",
+			"type": "update_notice", //每组任务配置开始和结束运行的通知
+		}
+```
+或
+```json
+	{
+			"payload": "日志内容",
+			"type": "notice", //一些其他日志通知
+		}
+```
 ## 运行过程简要说明
 程序主要通过全局变量来进行内部沟通，包含：  
  - tasks_config_waiting_list
@@ -222,9 +240,29 @@ maa-lrc每次只能接收一个json文本，并会解析为一个任务配置加
 > **请不要随意删除线程循环检查中的sleep方法,这会导致CPU占用很高**
     
 
-## 已知问题
+## 已知问题或重要提醒
  - 使用`Ctrl+C`强制退出程序后重新运行时可能报出C的内存相关错误`double free or corruption (out)`，目前就暂时多强制退出再运行几次吧   
  - ws的重连和错误处理尚不完善   
+ - 我尝试了诸多方法都无法实现在python脚本运行时彻底重载共享库文件（无论如何都会报段错误且无法捕获异常，因为这来自C库），因此暂时无法实现内核版本更新后的热重载。这意味着现阶段**每次MAA内核版本更新后必须手动重启python脚本**。你可以使用一些简单的守护进程来实现无人监管下的脚本自动重启，尽管这很不优雅，比如这样的shell脚本：
+```shell
+while :
+do
+#   echo "Current DIR is " $PWD
+  time=$(date "+%Y-%m-%d %H:%M:%S")
+  stillRunning=$(ps -ef |grep "__init__.py" |grep -v "grep")
+  if [ "$stillRunning" ] ; then
+    echo "${time} MAA进程正常运行" 
+    # echo "Kill it and then startup by this shell, other wise this shell will loop out this message annoyingly" 
+    # kill -9 $pidof $PWD/loader
+  else
+    echo "${time} MAA进程不在运行" 
+    echo "${time} 尝试重新启动" 
+    tmux send-keys -t %8 "python __init__.py" Enter
+	#我的MAA-LRC是挂在tmux下的%8号窗格运行的，当MAA进程关闭时，就向tmux内的%8号窗格发送指令以重启进程
+  fi
+  sleep 10
+done
+```
   
     
   
