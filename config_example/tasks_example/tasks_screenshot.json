@@ -1,0 +1,10 @@
+{
+	"name": "立即截图",
+	"type": "interrupt",
+	"tasks": [
+		{
+			"type": "Screenshot",
+			"id": "立即截图"
+		}
+	]
+}

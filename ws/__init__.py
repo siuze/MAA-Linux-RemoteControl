@@ -16,10 +16,15 @@ def on_message(wsapp, msg):
 		data = json.loads(msg)
 	except ValueError:
 		global_var.get("send_msg_waiting_queue").put({'type':'receipt','payload':'收到的消息无法通过json格式化'})
-	global_var.get("tasks_config_waiting_queue").put({"data":data,})
+	config_type = "一般"
+	if "type" in data and data['type'] == "interrupt":
+		config_type = "中断"
+		global_var.get("interrupt_tasks_waiting_queue").put({"data":data,})
+	else:
+		global_var.get("tasks_config_waiting_queue").put({"data":data,})
 	recall = {
 			"status": "SUCCESS",
-			"payload": "MAA已收到一条任务配置，加入任务处理队列等待运行",
+			"payload": f"MAA已收到一条{config_type}任务配置，加入任务处理队列等待运行",
 			"type": "receipt",
 		}
 	global_var.get("send_msg_waiting_queue").put(recall)
