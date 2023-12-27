@@ -7,6 +7,7 @@ class GlobalVar:
 		self._global = dict(
 		my_maa = None,
 		wsapp = None,
+		clean_all_config_tag = False,
 		tasks_config_waiting_queue = Queue(),
 		interrupt_tasks_waiting_queue = Queue(),
 		send_msg_waiting_queue = Queue()

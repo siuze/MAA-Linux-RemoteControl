@@ -1,4 +1,5 @@
 {
     "tasks_config_waiting_queue": [], 
-    "send_msg_waiting_queue": []
+    "send_msg_waiting_queue": [], 
+    "interrupt_tasks_waiting_queue": []
 }

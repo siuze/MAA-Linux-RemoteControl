@@ -175,7 +175,15 @@ class MAA:
 		lg.error(text)
 		return 0
 
-
+	def connect_adb(self):
+		if not self.find_adb_wifi_port():
+			return False
+		f=os.popen(f'{self.asst_config["connection"]["adb"]} connect {self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}')  # 返回的是一个文件对象
+		result = f.read().replace(' ','').replace('\n','')
+		lg.info(f"ADB连接结果{result}")
+		if "already" in result or 'connected' in result:
+			return True
+		return False
 
 	def connect(self, init=False, retry=0):
 		"""
@@ -248,7 +256,6 @@ class MAA:
 			return length
 
 
-
 	def add_fight_msg(self, detail):
 		"""
 		对回调函数收到的作战结果进行解析
@@ -272,13 +279,23 @@ class MAA:
 		while self.fight_log['msg'][-1:] == '\n':
 			self.fight_log['msg'] = self.fight_log['msg'][:-1]
 
+
+
 	def interrupt_tasks_handler(self, data:dict):
 		config_name = data['name'] if 'name' in data else int(time.time())
-		lg.info(f"正在运行配置：{config_name}")
+		lg.info(f"正在运行中断任务配置：{config_name}")
+		currentDateAndTime = datetime.datetime.now()
+		currentTime = currentDateAndTime.strftime("%Y-%m-%d %H:%M:%S")
+		recall = {
+					"payload": f"{currentTime}\n开始运行中断配置：{config_name}",
+					"status": "BEGIN",
+					"type": "interrupt_config_notice",
+				}
+		global_var.get("send_msg_waiting_queue").put(recall)
 		task_index = 0
 		while task_index < len(data['tasks']):
 			task_begin_time = time.time()
-			lg.info(f"正在处理第{task_index}个任务")
+			lg.info(f"正在处理第{task_index}个中断任务")
 			task = data['tasks'][task_index]
 			lg.info(task)
 			recall = {
@@ -289,11 +306,54 @@ class MAA:
 						"status": "SUCCESS",
 						"payload": "",
 						"image": "",
-						"type": "recall",
-						"name": config_name
+						"type": "interrupt_task_report",
+						"name": config_name,
+						"task_config": task
 					}
 			task_index += 1
-			# if task['type'] == 'Update':
+			if task['type'] == 'Screenshot':
+				img_msg = self.screenshot(f"Interrupt_{recall['task']}",rb=True)
+				if len(img_msg) < 10*1024:
+					text = f"截图数据大小异常 {len(img_msg)/1024}KBytes，尝试重连ADB"
+					lg.error(text)
+					recall['payload'] = text
+					if not self.connect_adb():
+						text = "\n重连失败，请排查错误"
+						lg.error(text)
+						recall['payload'] = text
+					else:
+						img_msg = self.screenshot(f"Interrupt_{recall['task']}",rb=True)
+						if len(img_msg) < 10*1024:
+							text = f"\n截图大小仍然异常 {len(img_msg)/1024}KBytes，请排查错误"
+							lg.error(text)
+							recall['payload'] = text
+						else:
+							recall['image'] = base64.b64encode(img_msg).decode("utf-8")
+				else:
+					recall['image'] = base64.b64encode(img_msg).decode("utf-8")
+				
+			if task['type'] == 'Stop_config':
+				lg.info("停止maa当前任务并设置标记：跳过当前配置")
+				self.stop_tag = '跳过当前配置'
+				self.asst.stop()
+				recall['payload'] = "已下发终止当前配置指令"
+			if task['type'] == 'Stop':
+				lg.info("停止maa当前任务并设置标记：停止所有配置")
+				self.stop_tag = '停止所有配置'
+				global_var.set("clean_all_config_tag", True)
+				self.asst.stop()
+				recall['payload'] = "已下发终止所有配置指令"
+			lg.info("发送回调消息")
+			recall['duration'] = int(time.time()-task_begin_time)
+			global_var.get("send_msg_waiting_queue").put(recall)
+		currentDateAndTime = datetime.datetime.now()
+		currentTime = currentDateAndTime.strftime("%Y-%m-%d %H:%M:%S")
+		recall = {
+					"payload": f"{currentTime}\n运行结束：{config_name}",
+					"status": "END",
+					"type": "interrupt_config_notice",
+				}
+		global_var.get("send_msg_waiting_queue").put(recall)
 	def tasks_handler(self, data: dict):
 		config_name = data['name'] if 'name' in data else int(time.time())
 		lg.info(f"正在运行配置：{config_name}")
@@ -302,7 +362,7 @@ class MAA:
 		recall = {
 					"payload": f"{currentTime}\n开始运行配置：{config_name}",
 					"status": "BEGIN",
-					"type": "config_notice",
+					"type": "normal_config_notice",
 				}
 		global_var.get("send_msg_waiting_queue").put(recall)
 		task_index = 0
@@ -321,8 +381,10 @@ class MAA:
 						"status": "SUCCESS",
 						"payload": "",
 						"image": "",
-						"type": "recall",
-						"name": config_name
+						"type": "normal_task_report",
+						"name": config_name,
+						"task_config": task
+
 					}
 			task_index += 1
 			self.fight_log = {'stages':{},'drops':{},'msg':''}
@@ -382,7 +444,7 @@ class MAA:
 				while self.asst.running():
 					time.sleep(0)
 				lg.info("任务结束运行")
-				lg.info("检查结束标记")
+				lg.info(f"检查结束标记：{self.stop_tag}")
 				if self.stop_tag == 'MAA出错':
 					text = f"任务运行过程中存在出错情况，具体问题定位有待代码完善"
 					recall['payload'] += text + '\n'
@@ -398,18 +460,18 @@ class MAA:
 					# 	task_count = 0
 					# 	self.stop_tag = '正常'
 				recall['payload'] += self.fight_log['msg']
-				if self.stop_tag == '手动结束':
-					text = "收到手动结束任务指令，退出当前任务配置"
-					lg.error(text)
-					if recall['payload']:
-						recall['payload'] += '\n'
-					recall['payload'] += text
-					self.stop_tag = '正常'
-					recall['payload'] += text
-					recall['status'] = "FAILED"
-					recall['duration'] = int(time.time()-task_begin_time)
-					global_var.get("send_msg_waiting_queue").put(recall)
-					return 
+				# if self.stop_tag == '手动结束':
+				# 	text = "收到手动结束任务指令，退出当前任务配置"
+				# 	lg.error(text)
+				# 	if recall['payload']:
+				# 		recall['payload'] += '\n'
+				# 	recall['payload'] += text
+				# 	self.stop_tag = '正常'
+				# 	recall['payload'] += text
+				# 	recall['status'] = "FAILED"
+				# 	recall['duration'] = int(time.time()-task_begin_time)
+				# 	global_var.get("send_msg_waiting_queue").put(recall)
+				# 	return 
 				if self.stop_tag == '任务链出错':
 					if retry < 1:
 						retry += 1
@@ -461,6 +523,7 @@ class MAA:
 					global_var.get("send_msg_waiting_queue").put(recall)
 					self.asst.stop()
 					continue
+				
 				lg.info("检查是否需要在运行后截图")
 				if "screenshot" in task and (task['screenshot'] == 'after' or task['screenshot'] =='both'):
 					img_msg = self.screenshot(f"after_{recall['task']}",rb=True)
@@ -474,6 +537,28 @@ class MAA:
 					lg.info("将截图填入回调消息中")
 					recall['image'] = base64.b64encode(img_msg).decode("utf-8")
 
+				if self.stop_tag == '跳过当前配置':
+					self.stop_tag = '正常'
+					text = "收到指令，终止当前配置运行"
+					lg.error(text)
+					if recall['payload']:
+						recall['payload'] += '\n'
+					recall['payload'] += text 
+					recall['duration'] = int(time.time()-task_begin_time)
+					global_var.get("send_msg_waiting_queue").put(recall)
+					self.asst.stop()
+					break
+				if self.stop_tag == '停止所有配置':
+					self.stop_tag = '正常'
+					text = "收到指令，终止所有配置运行"
+					lg.error(text)
+					if recall['payload']:
+						recall['payload'] += '\n'
+					recall['payload'] += text 
+					recall['duration'] = int(time.time()-task_begin_time)
+					global_var.get("send_msg_waiting_queue").put(recall)
+					self.asst.stop()
+					break
 				lg.info("发送回调消息")
 				recall['duration'] = int(time.time()-task_begin_time)
 				global_var.get("send_msg_waiting_queue").put(recall)
@@ -486,7 +571,8 @@ class MAA:
 		recall = {
 					"payload": f"{currentTime}\n运行结束：{config_name}",
 					"status": "END",
-					"type": "config_notice",
+					"type": "normal_config_notice",
 				}
 		global_var.get("send_msg_waiting_queue").put(recall)
+		
 
