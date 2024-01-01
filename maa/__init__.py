@@ -86,6 +86,9 @@ class MAA:
 			self.asst_config = yaml.safe_load(config_f)
 		#更新并加载核心和共享库
 		self.update_and_load()
+		self.clean_adb()
+  
+
 
 
 
@@ -151,8 +154,9 @@ class MAA:
 				with open(official_template_file_path, 'wb') as official_f: 
 						official_f.write(custom_f.read())
 
-
-
+	def clean_adb(self):
+		f=os.popen(f"ps -ef | grep {self.asst_config['connection']['adb']} | grep -v grep | awk '{{print $2}}' | xargs kill -9")  # 返回的是一个文件对象
+		# port = f.read().replace(' ','').replace('\n','')
 	def find_adb_wifi_port(self,retry=50):
 		"""
 		Android 11以上可以在开发人员选项内开启无线调试
@@ -279,7 +283,52 @@ class MAA:
 		while self.fight_log['msg'][-1:] == '\n':
 			self.fight_log['msg'] = self.fight_log['msg'][:-1]
 
+	def parse_logic(self, operator,cond) -> bool:
+		if operator == 'not':
+			tmp_bool = self.parse_logic(cond.keys()[0], cond.values([0]))
+			if not tmp_bool:
+				return True
+			else:
+				return False
+		if operator == 'and':
+			for sub_cond in cond:
+				if not self.parse_logic(sub_cond.keys()[0], sub_cond.values([0])):
+					return False
+			return True
+		if operator == 'or':
+			for sub_cond in cond:
+				if self.parse_logic(sub_cond.keys()[0], sub_cond.values([0])):
+					return True
+			return False
+		if operator == 'id':
+			if cond in self.config_success_fight_id:
+				return True
+			else:
+				return False
 
+	def parse_condition(self,cond:dict):
+		enable = True
+		now = datetime.datetime.now()
+		for key, value in cond.items():
+			if key == 'weekday':
+				if now.weekday()+1 not in value:
+					lg.info("未达到该任务启用的星期范围，跳过")
+					enable = False
+					break
+			elif key == 'hour':
+				if '<' in value and  now.hour >= value['<']:
+					lg.info("时刻超过任务启用的范围，跳过")
+					enable = False
+					break
+				if '>' in value and  now.hour <= value['>']:
+					lg.info("时刻未达任务启用的范围，跳过")
+					enable = False
+					break
+			else:
+				if not self.parse_logic(key,value):
+					enable = False
+					break
+		return enable
 
 	def interrupt_tasks_handler(self, data:dict):
 		config_name = data['name'] if 'name' in data else int(time.time())
@@ -297,11 +346,13 @@ class MAA:
 			task_begin_time = time.time()
 			lg.info(f"正在处理第{task_index}个中断任务")
 			task = data['tasks'][task_index]
+			if 'id' not in task:
+				task['id'] = f"{task['type']}_{task_index}"
 			lg.info(task)
 			recall = {
 						"devices": uuid.UUID(int = uuid.getnode()).hex[-12:].upper(),
 						"user": "",
-						"task": task['id'] if 'id' in task else f"{task['type']}_{task_index}",
+						"task": task['id'],
 						"task_type": task['type'],
 						"status": "SUCCESS",
 						"payload": "",
@@ -354,6 +405,8 @@ class MAA:
 					"type": "interrupt_config_notice",
 				}
 		global_var.get("send_msg_waiting_queue").put(recall)
+
+
 	def tasks_handler(self, data: dict):
 		config_name = data['name'] if 'name' in data else int(time.time())
 		lg.info(f"正在运行配置：{config_name}")
@@ -368,15 +421,18 @@ class MAA:
 		task_index = 0
 		retry = 0
 		success_tasks = []
+		self.config_success_fight_id = []
 		while task_index < len(data['tasks']):
 			task_begin_time = time.time()
 			lg.info(f"正在处理第{task_index}个任务")
 			task = data['tasks'][task_index]
+			if 'id' not in task:
+				task['id'] = f"{task['type']}_{task_index}"
 			lg.info(task)
 			recall = {
 						"devices": uuid.UUID(int = uuid.getnode()).hex[-12:].upper(),
 						"user": "",
-						"task": task['id'] if 'id' in task else f"{task['type']}_{task_index}",
+						"task": task['id'],
 						"task_type": task['type'],
 						"status": "SUCCESS",
 						"payload": "",
@@ -406,18 +462,9 @@ class MAA:
 					lg.info("该任务未启用，跳过")
 					continue
 				if 'condition' in task:
-					now = datetime.datetime.now()
-					if 'weekday' in task['condition']:
-						if now.weekday()+1 not in task['condition']['weekday']:
-							lg.info("未达到该任务启用的星期范围，跳过")
-							continue
-					if 'hour' in task['condition']:
-						if '<' in task['condition']['hour'] and  now.hour >= task['condition']['hour']['<']:
-							lg.info("时刻超过任务启用的范围，跳过")
-							continue
-						if '>' in task['condition']['hour'] and  now.hour <= task['condition']['hour']['>']:
-							lg.info("时刻未达任务启用的范围，跳过")
-							continue
+					if not self.parse_condition(task['condition']):
+						lg.info("任务条件检查未通过，跳过当前任务")
+						continue
 				lg.info("检查完毕：任务正常启用")
 				lg.info("运行任务前检查ADB连接情况")
 				if not self.connect():
@@ -460,6 +507,10 @@ class MAA:
 					# 	task_count = 0
 					# 	self.stop_tag = '正常'
 				recall['payload'] += self.fight_log['msg']
+				if len(self.fight_log['stages']) > 0:
+					self.config_success_fight_id.append(task['id'])
+				lg.info("现在成功有效执行了的Fight任务有：")
+				lg.info(self.config_success_fight_id)
 				# if self.stop_tag == '手动结束':
 				# 	text = "收到手动结束任务指令，退出当前任务配置"
 				# 	lg.error(text)
@@ -473,18 +524,18 @@ class MAA:
 				# 	global_var.get("send_msg_waiting_queue").put(recall)
 				# 	return 
 				if self.stop_tag == '任务链出错':
-					if retry < 1:
+					if retry < 2:
 						retry += 1
 						self.stop_tag = '正常'
-						text = "任务运行过程出错，尝试重新执行该任务一次"
+						text = "任务运行过程出错，尝试重新执行该配置一次"
 						lg.error(text)
 						if recall['payload']:
 							recall['payload'] += '\n'
 						recall['payload'] += text 
 						recall['status'] = "FAILED"
 						recall['duration'] = int(time.time()-task_begin_time)
-						global_var.get("send_msg_waiting_queue").put(recall)
-						task_index -= 1
+						# global_var.get("send_msg_waiting_queue").put(recall)
+						task_index = 0
 						self.asst.stop()
 						continue
 					else:

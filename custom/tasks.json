@@ -175,5 +175,9 @@
 		],
 		"maxTimes": 50
 	},
-	"AccountManagerTrashButton": {}
+	"AccountManagerTrashButton": {},
+	"AccountManagerLoginButton": {
+		"action": "ClickSelf",
+		"templThreshold": 0.5
+	}
 }
