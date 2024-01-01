@@ -39,6 +39,11 @@
 			"params": {
 				"expiring_medicine": 1000,
 				"stage": "RS-5"
+			},
+			"condition": {
+				"not": {
+					"id": "每周剿灭"
+				}
 			}
 		},
 		{
@@ -49,6 +54,20 @@
 			"params": {
 				"expiring_medicine": 1000,
 				"stage": "1-7"
+			},
+			"condition": {
+				"and": [
+					{
+						"not": {
+							"id": "每周剿灭"
+						}
+					},
+					{
+						"not": {
+							"id": "活动关卡"
+						}
+					}
+				]
 			}
 		},
 		{
