@@ -20,6 +20,18 @@ from asst.utils import Message, Version, InstanceOptionType
 from asst.updater import Updater
 
 from _global import global_var
+
+facility_map = {
+	"Mfg": "制造站",
+	"Trade": "贸易站",
+	"Power": "发电站",
+	"Control": "控制中枢",
+	"Reception": "会客室",
+	"Office": "人力办公室",
+	"Dorm": "宿舍"
+}
+
+
 @Asst.CallBackType
 def my_callback(msg, details, arg) -> None:
 	"""
@@ -66,6 +78,31 @@ def my_callback(msg, details, arg) -> None:
 			lg.info(text)
 			my_maa.stop_tag = '需要重连'
 			my_maa.asst.stop()
+		elif what == 'RecruitTagsDetected':
+			my_maa.recruit_log += f"识别到稀有标签：【{js['details']['tag']}】\n"
+		elif what == 'RecruitResult':
+			if js['details']['level'] >= 5:
+				my_maa.recruit_log += f"存在★★★★★及以上的公招标签组合"
+		elif what == 'RecruitNoPermit':
+			my_maa.recruit_log += f"公招无招聘许可\n"
+		elif what == 'RecruitTagsSelected':
+			my_maa.recruit_log += f"公招选中："
+			for tag in js['details']['tags']:
+				my_maa.recruit_log += f"【{tag}】、"
+			if my_maa.recruit_log[-1:] == '、':
+				my_maa.recruit_log =  my_maa.recruit_log[:-1] + '\n'
+		elif what == 'NotEnoughStaff':
+			my_maa.infrast_log += f"{facility_map[js['details']['facility']]}可用干员不足\n"
+	
+	if 'details' in js:
+		if 'task' in js['details']:
+			if js['details']['task'] == "StoneConfirm":
+				my_maa.fight_log['log'] += "确认碎石一次\n"
+			if js['details']['task'] == "ExpiringMedicineConfirm":
+				my_maa.fight_log['log'] += "使用 48 小时内过期的理智药一次\n"
+			if js['details']['task'] == "InfrastDormDoubleConfirmButton":
+				my_maa.infrast_log += "基建宿舍出现干员冲突，请检查\n"
+    
 	if my_maa.asst_config['python']['debug']:
 		lg.info(m)
 		lg.info(js)
@@ -75,7 +112,9 @@ def my_callback(msg, details, arg) -> None:
 class MAA:
 	def __init__(self) -> None:
 		self.connect_log = ''
-		self.fight_log = {'stages':{},'drops':{},'msg':''}	#作战信息
+		self.fight_log = {'stages':{},'drops':{},'msg':'','log':''}	#作战信息
+		self.recruit_log = ''
+		self.infrast_log = ''
 		self.stop_tag = '正常'	#任务运行完成后会检查回调函数有没有给出报错，有的话重新执行
 		#MAA核心路径
 		self.core_path = Path(__file__).parent.parent.parent / "MAA-linux"
@@ -156,6 +195,7 @@ class MAA:
 
 	def clean_adb(self):
 		f=os.popen(f"ps -ef | grep {self.asst_config['connection']['adb']} | grep -v grep | awk '{{print $2}}' | xargs kill -9")  # 返回的是一个文件对象
+		f.close()
 		# port = f.read().replace(' ','').replace('\n','')
 	def find_adb_wifi_port(self,retry=50):
 		"""
@@ -165,6 +205,7 @@ class MAA:
 		while retry:
 			f=os.popen(f'nmap {self.asst_config["connection"]["ip"]} -p 30000-49999 | awk "/\\/tcp/" | cut -d/ -f1')  # 返回的是一个文件对象
 			port = f.read().replace(' ','').replace('\n','')
+			f.close()
 			text = f"扫描得到ADB端口为：{port}"
 			lg.info(text)
 			if not port:
@@ -184,6 +225,7 @@ class MAA:
 			return False
 		f=os.popen(f'{self.asst_config["connection"]["adb"]} connect {self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}')  # 返回的是一个文件对象
 		result = f.read().replace(' ','').replace('\n','')
+		f.close()
 		lg.info(f"ADB连接结果{result}")
 		if "already" in result or 'connected' in result:
 			return True
@@ -284,38 +326,56 @@ class MAA:
 			self.fight_log['msg'] = self.fight_log['msg'][:-1]
 
 	def parse_logic(self, operator,cond) -> bool:
+		lg.info(f"检查逻辑条件：{operator}")
+		lg.info(cond)
 		if operator == 'not':
-			tmp_bool = self.parse_logic(cond.keys()[0], cond.values([0]))
+			tmp_bool = self.parse_logic(list(cond.keys())[0], list(cond.values())[0])
 			if not tmp_bool:
+				lg.info("not 条件检查通过")
 				return True
 			else:
+				lg.info("not 条件检查不通过")
 				return False
 		if operator == 'and':
 			for sub_cond in cond:
-				if not self.parse_logic(sub_cond.keys()[0], sub_cond.values([0])):
+				if not self.parse_logic(list(sub_cond.keys())[0], list(sub_cond.values())[0]):
+					lg.info("and 条件检查不通过")
 					return False
+				else:
+					lg.info("and 条件检查部分通过")
+			lg.info("and 条件检查部分通过")
 			return True
 		if operator == 'or':
 			for sub_cond in cond:
-				if self.parse_logic(sub_cond.keys()[0], sub_cond.values([0])):
+				if self.parse_logic(list(sub_cond.keys())[0], list(sub_cond.values())[0]):
+					lg.info("or 条件检查通过")
 					return True
+				else:
+					lg.info("or 条件检查部分不通过")
+			lg.info("or 条件检查不通过")
 			return False
 		if operator == 'id':
 			if cond in self.config_success_fight_id:
+				lg.info("任务有效性检查通过")
 				return True
 			else:
+				lg.info("任务有效性检查不通过")
 				return False
 
 	def parse_condition(self,cond:dict):
+		lg.info("检查任务是否符合启用条件")
 		enable = True
 		now = datetime.datetime.now()
 		for key, value in cond.items():
 			if key == 'weekday':
+				lg.info(f"检查星期序号，当前为{now.weekday()+1}")
 				if now.weekday()+1 not in value:
 					lg.info("未达到该任务启用的星期范围，跳过")
 					enable = False
 					break
+				lg.info("当前时间在该任务启用的星期范围内，通过条件检查")
 			elif key == 'hour':
+				lg.info(f"检查时间段，当前为{now.hour}时")
 				if '<' in value and  now.hour >= value['<']:
 					lg.info("时刻超过任务启用的范围，跳过")
 					enable = False
@@ -324,7 +384,9 @@ class MAA:
 					lg.info("时刻未达任务启用的范围，跳过")
 					enable = False
 					break
+				lg.info("当前时间在该任务启用的时段范围内，通过条件检查")
 			else:
+				lg.info(f"检查逻辑条件")
 				if not self.parse_logic(key,value):
 					enable = False
 					break
@@ -422,6 +484,8 @@ class MAA:
 		retry = 0
 		success_tasks = []
 		self.config_success_fight_id = []
+		self.recruit_log = ''
+		self.infrast_log = ''
 		while task_index < len(data['tasks']):
 			task_begin_time = time.time()
 			lg.info(f"正在处理第{task_index}个任务")
@@ -443,7 +507,7 @@ class MAA:
 
 					}
 			task_index += 1
-			self.fight_log = {'stages':{},'drops':{},'msg':''}
+			self.fight_log = {'stages':{},'drops':{},'msg':'','log':''}	#作战信息
 			if task['type'] == 'Update':
 				lg.info("收到更新任务，调用更新和加载函数")
 				self.update_and_load(force=True)
@@ -507,10 +571,27 @@ class MAA:
 					# 	task_count = 0
 					# 	self.stop_tag = '正常'
 				recall['payload'] += self.fight_log['msg']
+				if self.fight_log['log']:
+					recall['payload'] += "\n" + self.fight_log['log']
 				if len(self.fight_log['stages']) > 0:
 					self.config_success_fight_id.append(task['id'])
 				lg.info("现在成功有效执行了的Fight任务有：")
 				lg.info(self.config_success_fight_id)
+    
+				if task['type'] == 'Recruit' and self.recruit_log:
+					if recall['payload']:
+						recall['payload'] += '\n'
+					recall['payload'] += self.recruit_log 
+				if '公招' in task['id'] and self.recruit_log:
+					if recall['payload']:
+						recall['payload'] += '\n'
+					recall['payload'] += self.recruit_log 
+
+				if task['type'] == 'Infrast' and self.infrast_log:
+					if recall['payload']:
+						recall['payload'] += '\n'
+					recall['payload'] += self.infrast_log 
+
 				# if self.stop_tag == '手动结束':
 				# 	text = "收到手动结束任务指令，退出当前任务配置"
 				# 	lg.error(text)
