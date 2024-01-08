@@ -26,8 +26,9 @@
 
 ## 运行效果（使用Nonebot构建的QQ机器人下对MAA-LRC推送的回调消息进行通知）
 激活MAA时自动更新  
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/43689b49-ed8b-4224-ba16-7462c38bf994)
-  
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/e6f2adbd-c3d5-44de-844e-e5aa36ae70c0)
+
+ 
 启动游戏  
 ![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/137c56c6-c3cd-47a8-8017-1189162501cc)
   
@@ -45,7 +46,8 @@
 ![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/7095b36f-7b7b-4b55-801c-4756eccad7bc)
 
 公开招募  
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/ca55a62e-5039-4d98-891a-cb11d74c4794)
+![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/ae16d811-26fb-4dca-ba1c-e0ae4704614d)
+
 
 任务奖励    
 ![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/9a1b2688-addf-4db0-987c-981decfb33a3)
