@@ -47,7 +47,7 @@ def my_callback(msg, details, arg) -> None:
 	if m == Message.InternalError or m == Message.SubTaskError or m == Message.TaskChainError:
 		text = f"MAA出错：{str(m)} {details.decode('utf-8')}"
 		lg.error(text)
-		if m == Message.TaskChainError and js["taskchain"]=="StartUp":
+		if m == Message.TaskChainError and (js["taskchain"] in ["StartUp", "Award", "Mall" ]):
 			my_maa.stop_tag = '任务链出错'
 			my_maa.asst.stop()
 		# send_msg(text) #先不发送了，防止刷屏消息被封
@@ -78,28 +78,38 @@ def my_callback(msg, details, arg) -> None:
 			lg.info(text)
 			my_maa.stop_tag = '需要重连'
 			my_maa.asst.stop()
-		elif what == 'RecruitTagsDetected':
+		elif what == 'RecruitSpecialTag':
 			my_maa.recruit_log += f"识别到稀有标签：【{js['details']['tag']}】\n"
 		elif what == 'RecruitResult':
 			if js['details']['level'] >= 5:
-				my_maa.recruit_log += f"存在★★★★★及以上的公招标签组合"
+				my_maa.recruit_log += f"!重要!  存在五星及以上的公招标签组合，请在任务结束后检查：\n"
+				result =js['details']['result']
+				for match in result:
+					if match["level"] >= 5:
+						tags = "【 "
+						for tag in match["tags"]:
+							tags += tag+' '
+						tags += '】'
+						my_maa.recruit_log += tags 
+						for oper in match['opers']:
+							my_maa.recruit_log += oper['name'] + ' '
+				my_maa.recruit_log += '\n'
 		elif what == 'RecruitNoPermit':
 			my_maa.recruit_log += f"公招无招聘许可\n"
 		elif what == 'RecruitTagsSelected':
 			my_maa.recruit_log += f"公招选中："
+			my_maa.recruit_log += f"【 "
 			for tag in js['details']['tags']:
-				my_maa.recruit_log += f"【{tag}】、"
-			if my_maa.recruit_log[-1:] == '、':
-				my_maa.recruit_log =  my_maa.recruit_log[:-1] + '\n'
+				my_maa.recruit_log += f"{tag} "
+			my_maa.recruit_log += f"】\n"
 		elif what == 'NotEnoughStaff':
 			my_maa.infrast_log += f"{facility_map[js['details']['facility']]}可用干员不足\n"
-	
+		elif what == 'UseMedicine':
+			my_maa.fight_log['log'] += "使用理智药一次\n"
 	if 'details' in js:
 		if 'task' in js['details']:
-			if js['details']['task'] == "StoneConfirm":
+			if js['details']['task'] == "StoneConfirm" and m == Message.SubTaskCompleted:
 				my_maa.fight_log['log'] += "确认碎石一次\n"
-			if js['details']['task'] == "ExpiringMedicineConfirm":
-				my_maa.fight_log['log'] += "使用 48 小时内过期的理智药一次\n"
 			if js['details']['task'] == "InfrastDormDoubleConfirmButton":
 				my_maa.infrast_log += "基建宿舍出现干员冲突，请检查\n"
     
@@ -115,6 +125,7 @@ class MAA:
 		self.fight_log = {'stages':{},'drops':{},'msg':'','log':''}	#作战信息
 		self.recruit_log = ''
 		self.infrast_log = ''
+		self.running_config = ''
 		self.stop_tag = '正常'	#任务运行完成后会检查回调函数有没有给出报错，有的话重新执行
 		#MAA核心路径
 		self.core_path = Path(__file__).parent.parent.parent / "MAA-linux"
@@ -427,7 +438,8 @@ class MAA:
 			if task['type'] == 'Screenshot':
 				img_msg = self.screenshot(f"Interrupt_{recall['task']}",rb=True)
 				if len(img_msg) < 10*1024:
-					text = f"截图数据大小异常 {len(img_msg)/1024}KBytes，尝试重连ADB"
+					time.sleep(10)
+					text = f"截图数据大小异常（{round(len(img_msg)/1024,2)}KBytes）KBytes，尝试重连ADB"
 					lg.error(text)
 					recall['payload'] = text
 					if not self.connect_adb():
@@ -435,9 +447,10 @@ class MAA:
 						lg.error(text)
 						recall['payload'] = text
 					else:
+						
 						img_msg = self.screenshot(f"Interrupt_{recall['task']}",rb=True)
 						if len(img_msg) < 10*1024:
-							text = f"\n截图大小仍然异常 {len(img_msg)/1024}KBytes，请排查错误"
+							text = f"\n截图数据异常（{round(len(img_msg)/1024,2)}KBytes）且重连无效，请排查错误"
 							lg.error(text)
 							recall['payload'] = text
 						else:
@@ -446,6 +459,18 @@ class MAA:
 					recall['image'] = base64.b64encode(img_msg).decode("utf-8")
 				
 			if task['type'] == 'Stop_config':
+				if "params" in task and "name" in task['params'] and task['params']["name"] != "" and self.running_config != task['params']["name"]:
+						lg.info("准备清除一份尚未运行的配置")
+						cleaned = False
+						for index in range((global_var.get("tasks_config_waiting_queue").qsize)):
+							if global_var.get("tasks_config_waiting_queue").queue[index]['data']["name"] == task['params']["name"]:
+								global_var.get("tasks_config_waiting_queue").queue.remove(global_var.get("tasks_config_waiting_queue").queue[index])
+								lg.info(f"清除队列中排序为{index}的配置")
+								cleaned = True
+								recall['payload'] = f"已清除队列中等待运行的配置：{task['params']['name']}"
+						if not cleaned:
+							recall['payload'] = f"队列中没有名为{task['params']['name']}的配置"
+							
 				lg.info("停止maa当前任务并设置标记：跳过当前配置")
 				self.stop_tag = '跳过当前配置'
 				self.asst.stop()
@@ -472,6 +497,7 @@ class MAA:
 	def tasks_handler(self, data: dict):
 		config_name = data['name'] if 'name' in data else int(time.time())
 		lg.info(f"正在运行配置：{config_name}")
+		self.running_config = config_name
 		currentDateAndTime = datetime.datetime.now()
 		currentTime = currentDateAndTime.strftime("%Y-%m-%d %H:%M:%S")
 		recall = {
@@ -570,6 +596,9 @@ class MAA:
 					# 	lg.error(text)
 					# 	task_count = 0
 					# 	self.stop_tag = '正常'
+				if '剿灭' in task['id']:
+					self.fight_log['log'] += '目前MAA剿灭功能与结果统计不完善\n'
+					
 				recall['payload'] += self.fight_log['msg']
 				if self.fight_log['log']:
 					recall['payload'] += "\n" + self.fight_log['log']

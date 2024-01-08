@@ -24,7 +24,7 @@ def on_message(wsapp, msg):
 		global_var.get("tasks_config_waiting_queue").put({"data":data,})
 	recall = {
 			"status": "SUCCESS",
-			"payload": f"MAA已收到一条{config_type}任务配置，加入任务处理队列等待运行",
+			"payload": f"MAA已收到一条{config_type}任务配置：【{data['name']}】，加入队列等待运行",
 			"type": "receipt",
 		}
 	global_var.get("send_msg_waiting_queue").put(recall)
