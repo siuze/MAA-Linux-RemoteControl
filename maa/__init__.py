@@ -93,7 +93,7 @@ def my_callback(msg, details, arg) -> None:
 						my_maa.recruit_log += tags 
 						for oper in match['opers']:
 							my_maa.recruit_log += oper['name'] + ' '
-				my_maa.recruit_log += '\n'
+					my_maa.recruit_log += '\n'
 		elif what == 'RecruitNoPermit':
 			my_maa.recruit_log += f"公招无招聘许可\n"
 		elif what == 'RecruitTagsSelected':
@@ -105,7 +105,10 @@ def my_callback(msg, details, arg) -> None:
 		elif what == 'NotEnoughStaff':
 			my_maa.infrast_log += f"{facility_map[js['details']['facility']]}可用干员不足\n"
 		elif what == 'UseMedicine':
-			my_maa.fight_log['log'] += "使用理智药一次\n"
+			my_maa.fight_log['log'] += f"使用{'即将过期' if js['details']['is_expiring'] else ''}理智药{js['details']['count']}个\n"
+		elif what == 'SanityBeforeStage':
+			my_maa.fight_log['sanity'] = f"剩余理智 {js['details']['current_sanity']}/{js['details']['max_sanity']}"
+		
 	if 'details' in js:
 		if 'task' in js['details']:
 			if js['details']['task'] == "StoneConfirm" and m == Message.SubTaskCompleted:
@@ -122,7 +125,7 @@ def my_callback(msg, details, arg) -> None:
 class MAA:
 	def __init__(self) -> None:
 		self.connect_log = ''
-		self.fight_log = {'stages':{},'drops':{},'msg':'','log':''}	#作战信息
+		self.fight_log = {'stages':{},'drops':{},'msg':'','log':'','stages':'','sanity':''}	#作战信息
 		self.recruit_log = ''
 		self.infrast_log = ''
 		self.running_config = ''
@@ -153,7 +156,7 @@ class MAA:
 				status = "UPDATED"
 			recall = {
 						"status": status,
-						"payload": self.update_log,
+						"payload": self.update_log.rstrip(),
 						"type": "update_notice",
 					}
 			global_var.get("send_msg_waiting_queue").put(recall)
@@ -205,18 +208,19 @@ class MAA:
 						official_f.write(custom_f.read())
 
 	def clean_adb(self):
-		f=os.popen(f"ps -ef | grep {self.asst_config['connection']['adb']} | grep -v grep | awk '{{print $2}}' | xargs kill -9")  # 返回的是一个文件对象
-		f.close()
-		# port = f.read().replace(' ','').replace('\n','')
+		cmd = f"ps -ef | grep {self.asst_config['connection']['adb']} | grep -v grep | awk '{{print $2}}' | xargs kill -9"
+		with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) as p:
+			out, err = p.communicate()
 	def find_adb_wifi_port(self,retry=50):
 		"""
 		Android 11以上可以在开发人员选项内开启无线调试
 		但是端口隔一段时间会变化，所以要扫描一下
 		"""
 		while retry:
-			f=os.popen(f'nmap {self.asst_config["connection"]["ip"]} -p 30000-49999 | awk "/\\/tcp/" | cut -d/ -f1')  # 返回的是一个文件对象
-			port = f.read().replace(' ','').replace('\n','')
-			f.close()
+			cmd = f'nmap {self.asst_config["connection"]["ip"]} -p 30000-49999 | awk "/\\/tcp/" | cut -d/ -f1'
+			with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) as p:
+				out, err = p.communicate()
+			port = out.decode('utf8').replace(' ','').replace('\n','')
 			text = f"扫描得到ADB端口为：{port}"
 			lg.info(text)
 			if not port:
@@ -234,9 +238,10 @@ class MAA:
 	def connect_adb(self):
 		if not self.find_adb_wifi_port():
 			return False
-		f=os.popen(f'{self.asst_config["connection"]["adb"]} connect {self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}')  # 返回的是一个文件对象
-		result = f.read().replace(' ','').replace('\n','')
-		f.close()
+		cmd = f'{self.asst_config["connection"]["adb"]} connect {self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}'
+		with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) as p:
+			out, err = p.communicate()
+		result = out.decode('utf8').replace(' ','').replace('\n','')
 		lg.info(f"ADB连接结果{result}")
 		if "already" in result or 'connected' in result:
 			return True
@@ -298,11 +303,8 @@ class MAA:
 					f'{self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]} '\
 					f'exec-out screencap -p > '\
 					f'{img_path}'
-     
-		pipe = subprocess.Popen(shell_cmd,
-								stdin=subprocess.PIPE,
-								stdout=subprocess.PIPE, shell=True)
-		tmp = pipe.stdout.read().replace(b'\r\n', b'\n')	#直接读取输出有问题，还是先写到文件里吧
+		with subprocess.Popen(shell_cmd, stdout=subprocess.PIPE, shell=True) as p:
+			out, err = p.communicate()
 		with open(img_path, 'rb') as f:
 			img = f.read()
 		length = len(img)
@@ -533,7 +535,7 @@ class MAA:
 
 					}
 			task_index += 1
-			self.fight_log = {'stages':{},'drops':{},'msg':'','log':''}	#作战信息
+			self.fight_log = {'stages':{},'drops':{},'msg':'','log':'','sanity':''}	#作战信息
 			if task['type'] == 'Update':
 				lg.info("收到更新任务，调用更新和加载函数")
 				self.update_and_load(force=True)
@@ -602,6 +604,8 @@ class MAA:
 				recall['payload'] += self.fight_log['msg']
 				if self.fight_log['log']:
 					recall['payload'] += "\n" + self.fight_log['log']
+				if self.fight_log['sanity']:
+					recall['payload'] += "\n" + self.fight_log['sanity']
 				if len(self.fight_log['stages']) > 0:
 					self.config_success_fight_id.append(task['id'])
 				lg.info("现在成功有效执行了的Fight任务有：")

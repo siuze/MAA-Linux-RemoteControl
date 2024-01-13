@@ -2,6 +2,7 @@
 /config
 */__pycache__
 /__pycache__
+/tmp
 # file 不需要提交的文件
 run.sh
 
