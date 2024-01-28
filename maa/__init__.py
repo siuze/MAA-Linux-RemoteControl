@@ -82,7 +82,7 @@ def my_callback(msg, details, arg) -> None:
 			my_maa.recruit_log += f"识别到稀有标签：【{js['details']['tag']}】\n"
 		elif what == 'RecruitResult':
 			if js['details']['level'] >= 5:
-				my_maa.recruit_log += f"!重要!  存在五星及以上的公招标签组合，请在任务结束后检查：\n"
+				my_maa.recruit_log += f"!重要!  存在五星或以上的公招标签组合，请在任务结束后检查：\n"
 				result =js['details']['result']
 				for match in result:
 					if match["level"] >= 5:
@@ -208,45 +208,76 @@ class MAA:
 						official_f.write(custom_f.read())
 
 	def clean_adb(self):
-		cmd = f"ps -ef | grep {self.asst_config['connection']['adb']} | grep -v grep | awk '{{print $2}}' | xargs kill -9"
-		with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) as p:
-			out, err = p.communicate()
+		try:
+				cmd = f"ps -ef | grep {self.asst_config['connection']['adb']} | grep -v grep | awk '{{print $2}}' | xargs kill -9"
+				with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,close_fds=True) as p:
+					out, err = p.communicate(timeout=60)
+		except subprocess.TimeoutExpired as e:
+			lg.exception("发生subprocess.TimeoutExpired错误，准备重启")
+			time.sleep(5)
+			save_cache()
+			os._exit(1)
+		except OSError as e:
+			lg.exception("发生系统错误，准备重启")
+			time.sleep(5)
+			save_cache()
+			os._exit(1)
 	def find_adb_wifi_port(self,retry=50):
 		"""
 		Android 11以上可以在开发人员选项内开启无线调试
 		但是端口隔一段时间会变化，所以要扫描一下
 		"""
-		while retry:
-			cmd = f'nmap {self.asst_config["connection"]["ip"]} -p 30000-49999 | awk "/\\/tcp/" | cut -d/ -f1'
-			with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) as p:
-				out, err = p.communicate()
-			port = out.decode('utf8').replace(' ','').replace('\n','')
-			text = f"扫描得到ADB端口为：{port}"
-			lg.info(text)
-			if not port:
-				text = "扫描不到设备ADB端口，等待重试"
-				lg.error(text)
-				time.sleep(5)
-				retry -=1
-			else:
-				self.asst_config["connection"]["port"] = int(port)
-				return int(port)
-		text = "扫描不到设备ADB端口，不再重试，请排查"
-		lg.error(text)
-		return 0
-
+		try:
+			while retry:
+				cmd = f'nmap {self.asst_config["connection"]["ip"]} -p 30000-49999 | awk "/\\/tcp/" | cut -d/ -f1'
+				with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,close_fds=True) as p:
+					out, err = p.communicate(timeout=60)
+				port = out.decode('utf8').replace(' ','').replace('\n','')
+				text = f"扫描得到ADB端口为：{port}"
+				lg.info(text)
+				if not port:
+					text = "扫描不到设备ADB端口，等待重试"
+					lg.error(text)
+					time.sleep(5)
+					retry -=1
+				else:
+					self.asst_config["connection"]["port"] = int(port)
+					return int(port)
+			text = "扫描不到设备ADB端口，不再重试，请排查"
+			lg.error(text)
+			return 0
+		except subprocess.TimeoutExpired as e:
+			lg.exception("发生subprocess.TimeoutExpired错误，准备重启")
+			time.sleep(5)
+			save_cache()
+			os._exit(1)
+		except OSError as e:
+			lg.exception("发生系统错误，准备重启")
+			time.sleep(5)
+			save_cache()
+			os._exit(1)
 	def connect_adb(self):
-		if not self.find_adb_wifi_port():
+		try:
+			if not self.find_adb_wifi_port():
+				return False
+			cmd = f'{self.asst_config["connection"]["adb"]} connect {self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}'
+			with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,close_fds=True) as p:
+				out, err = p.communicate(timeout=60)
+			result = out.decode('utf8').replace(' ','').replace('\n','')
+			lg.info(f"ADB连接结果{result}")
+			if "already" in result or 'connected' in result:
+				return True
 			return False
-		cmd = f'{self.asst_config["connection"]["adb"]} connect {self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}'
-		with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) as p:
-			out, err = p.communicate()
-		result = out.decode('utf8').replace(' ','').replace('\n','')
-		lg.info(f"ADB连接结果{result}")
-		if "already" in result or 'connected' in result:
-			return True
-		return False
-
+		except subprocess.TimeoutExpired as e:
+			lg.exception("发生subprocess.TimeoutExpired错误，准备重启")
+			time.sleep(5)
+			save_cache()
+			os._exit(1)
+		except OSError as e:
+			lg.exception("发生系统错误，准备重启")
+			time.sleep(5)
+			save_cache()
+			os._exit(1)
 	def connect(self, init=False, retry=0):
 		"""
 		通过ADB连接到安卓设备
@@ -298,21 +329,32 @@ class MAA:
 		# lg.info(f"waiting_async结束，截图已完成")
 		
 		# img,length = self.asst.get_img()
-		img_path = str(Path(__file__).parent.parent / f"img/{file_name}.png")
-		shell_cmd = f'{self.asst_config["connection"]["adb"]} -s '\
-					f'{self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]} '\
-					f'exec-out screencap -p > '\
-					f'{img_path}'
-		with subprocess.Popen(shell_cmd, stdout=subprocess.PIPE, shell=True) as p:
-			out, err = p.communicate()
-		with open(img_path, 'rb') as f:
-			img = f.read()
-		length = len(img)
-		lg.info(f"截图大小{length/1024}KBytes")
-		if rb:
-			return img
-		else:
-			return length
+		try:
+			img_path = str(Path(__file__).parent.parent / f"img/{file_name}.png")
+			shell_cmd = f'{self.asst_config["connection"]["adb"]} -s '\
+						f'{self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]} '\
+						f'exec-out screencap -p > '\
+						f'{img_path}'
+			with subprocess.Popen(shell_cmd, stdout=subprocess.PIPE, shell=True,close_fds=True) as p:
+				out, err = p.communicate(timeout=60)
+			with open(img_path, 'rb') as f:
+				img = f.read()
+			length = len(img)
+			lg.info(f"截图大小{length/1024}KBytes")
+			if rb:
+				return img
+			else:
+				return length
+		except subprocess.TimeoutExpired as e:
+			lg.exception("发生subprocess.TimeoutExpired错误，准备重启")
+			time.sleep(5)
+			save_cache()
+			os._exit(1)
+		except OSError as e:
+			lg.exception("发生系统错误，准备重启")
+			time.sleep(5)
+			save_cache()
+			os._exit(1)
 
 
 	def add_fight_msg(self, detail):
