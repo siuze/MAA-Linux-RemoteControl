@@ -1,0 +1,20 @@
+{
+    "HS-Open": {
+        "action": "ClickSelf",
+        "algorithm": "OcrDetect",
+        "text": [
+            "怀黍离",
+            "活动已开放"
+        ],
+        "roi": [
+            0,
+            500,
+            500,
+            150
+        ],
+        "postDelay": 2500,
+        "next": [
+            "HSChapterToHS"
+        ]
+    }
+}

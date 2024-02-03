@@ -10,7 +10,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from loguru import logger as lg
 import gc
-
+import json
 from .asst import Asst
 from .utils import Version
 from pathlib import Path
@@ -203,6 +203,7 @@ class Updater:
 		lg.info('进入update主函数')
 		global update_log
 		do_updated = False
+		do_OTA = False
 		update_log = ""
 		# 从dll获取MAA的版本
 		current_version = self.cur_version
@@ -275,24 +276,36 @@ class Updater:
 
 		self.custom_print(f"尝试OTA热更新资源")
 		ota_tasks_url = 'https://ota.maa.plus/MaaAssistantArknights/api/resource/tasks.json'
+		response = requests.get(ota_tasks_url, proxies=proxies, verify=False)
+		ota_tasks_json = response.json()
 		ota_tasks_path = self.path / 'cache' / 'resource' / 'tasks.json'
+		ota_tasks_bak_path = self.path / 'cache' / 'resource' / 'tasks_bak.json'
 		ota_tasks_path.parent.mkdir(parents=True, exist_ok=True)
+		if os.path.exists(ota_tasks_bak_path):
+			with open(ota_tasks_bak_path, 'r', encoding='utf-8') as f:
+				file_tasks_json = json.load(f)
+				if ota_tasks_json == file_tasks_json:
+					self.custom_print(f"OTA热更新资源无变化")
+					return do_updated, do_OTA, update_log
 		with open(ota_tasks_path, 'w', encoding='utf-8') as f:
-			response = requests.get(ota_tasks_url, proxies=proxies, verify=False)
-			关卡 = ''
-			added_key = []
-			for key in response.json():
-				new = True
-				for added in added_key:
-					if added in key:
-						new = False
-						break
-				if new:
-					关卡 += key + '、'
-					added_key.append(key)
-			self.custom_print(f"获取到信息：{关卡[:-1]}")
-			f.write(response.text)
-		# lg.info('重载Asst')
-		# self.asst.reload()
+			with open(ota_tasks_bak_path, 'w', encoding='utf-8') as f_bak:
+				response = requests.get(ota_tasks_url, proxies=proxies, verify=False)
+				关卡 = ''
+				added_key = []
+				for key in response.json():
+					# new = True
+					# for added in added_key:
+					# 	if added in key:
+					# 		new = False
+					# 		break
+					# if new:
+						关卡 += key + '、'
+						added_key.append(key)
+				do_OTA = True
+				self.custom_print(f"获取到信息：{关卡[:-1]}")
+				f.write(response.text)
+				f_bak.write(response.text)
+			# lg.info('重载Asst')
+			# self.asst.reload()
 
-		return do_updated,update_log
+		return do_updated, do_OTA, update_log

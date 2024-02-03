@@ -32,6 +32,9 @@ def on_error(wsapp, e):
 	lg.error(f"WS连接出错 {e}")
 def on_close(wsapp, close_status_code, close_reason):
 	lg.info(f"WS连接关闭 {close_status_code} {close_reason}")
+	if global_var.get('exit_all'):
+		lg.info(f"检测到exit_all标志")
+		exit()
 def ws_client():
 	with open(str(Path(__file__).parent.parent / "config/asst.yaml"), 'r', encoding='utf8') as config_f:
 		ws_url = yaml.safe_load(config_f)['python']['ws']
@@ -43,7 +46,15 @@ def ws_client():
 									on_error=on_error,
 									on_close=on_close)
 			global_var.set("wsapp",wsapp)
-			global_var.get("wsapp").run_forever()
+			global_var.get("wsapp").run_forever(ping_interval=10,ping_timeout=3)
+		except KeyboardInterrupt:
+			lg.error('检测到KeyboardInterrupt，准备5s后退出WS线程')
+			time.sleep(5)
+			try:
+				wsapp.close()
+			except:
+				pass
+			exit()
 		except Exception as e:
 			lg.error(traceback.format_exc())
 		finally:
