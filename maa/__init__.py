@@ -18,7 +18,7 @@ from cache import save_cache
 from asst.asst import Asst
 from asst.utils import Message, Version, InstanceOptionType
 from asst.updater import Updater
-
+from check_activity import match_activity, match_free_gacha, match_infrast_oops
 from _global import global_var
 
 facility_map = {
@@ -41,6 +41,8 @@ def my_callback(msg, details, arg) -> None:
 		``details``:  消息具体内容
 	:return: None
 	"""
+	if global_var.get('exit_all'):
+		exit()
 	my_maa = global_var.get("my_maa")
 	m = Message(msg)
 	js = json.loads(details.decode('utf-8'))
@@ -140,19 +142,21 @@ class MAA:
 		#更新并加载核心和共享库
 		self.update_and_load()
 		self.clean_adb()
-  
+
 
 
 
 
 	def update_and_load(self, force=False):
+		if global_var.get('exit_all'):
+			exit()
 		#更新版本
 		lg.info("进入版本更新与加载函数")
 		if self.asst_config['python']['auto_update'] or force:
 			lg.info("开始更新")
-			do_updated,self.update_log = Updater(self.core_path, Version.Beta).update()
+			do_updated, do_OTA, self.update_log = Updater(self.core_path, Version.Beta).update()
 			status = "LATEST"
-			if do_updated:
+			if do_updated or do_OTA:
 				status = "UPDATED"
 			recall = {
 						"status": status,
@@ -165,7 +169,8 @@ class MAA:
 				lg.info("核心文件版本已有变化，目前尚无法实现热重载，即将退出Python进程，等待外部重启")
 				time.sleep(5)
 				save_cache()
-				os._exit(1)
+				global_var.exit_all()
+				exit()
 		else:
 			lg.info("未开启自动更新")
 		#添加自定义任务模块
@@ -182,6 +187,8 @@ class MAA:
 		lg.info("加载完成")
 
 	def add_custom(self):
+		if global_var.get('exit_all'):
+			exit()
 		"""
 		将自定义的任务动作和修复问题的模板图片合并到官方的文件中
 		"""
@@ -193,7 +200,7 @@ class MAA:
 		with open(official_tasks_path, 'r', encoding='utf8') as file:
 			official_tasks = json.load(file)	#读取官方任务动作
 		for key, values in customs_tasks.items():
-			official_tasks[key] = values	##自定义任务动作加入到官方配置并保存
+			official_tasks[key] = values	##自定义任务动作覆盖到官方配置并保存
 		with open(official_tasks_path, 'w',encoding='utf8') as file:
 			file.write(json.dumps(official_tasks, ensure_ascii=False, indent=4, separators=(', ', ': ')))
 
@@ -207,28 +214,52 @@ class MAA:
 				with open(official_template_file_path, 'wb') as official_f: 
 						official_f.write(custom_f.read())
 
+		custom_tasks_path = Path(__file__).parent.parent / "custom/cache/resource/tasks.json"
+		official_tasks_path = self.core_path / "cache/resource/tasks.json"
+
+		with open(custom_tasks_path, 'r', encoding='utf8') as file:
+			customs_tasks = json.load(file)	#读取自定义任务动作
+		with open(official_tasks_path, 'r', encoding='utf8') as file:
+			official_tasks = json.load(file)	#读取官方任务动作
+		for key, values in customs_tasks.items():
+			official_tasks[key] = values	##自定义任务动作覆盖到官方配置并保存
+		with open(official_tasks_path, 'w',encoding='utf8') as file:
+			file.write(json.dumps(official_tasks, ensure_ascii=False, indent=4, separators=(', ', ': ')))
+
+
 	def clean_adb(self):
+		if global_var.get('exit_all'):
+			exit()
 		try:
 				cmd = f"ps -ef | grep {self.asst_config['connection']['adb']} | grep -v grep | awk '{{print $2}}' | xargs kill -9"
 				with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,close_fds=True) as p:
 					out, err = p.communicate(timeout=60)
+		except KeyboardInterrupt:
+			lg.error('检测到KeyboardInterrupt，退出线程')
+			exit()
 		except subprocess.TimeoutExpired as e:
 			lg.exception("发生subprocess.TimeoutExpired错误，准备重启")
 			time.sleep(5)
 			save_cache()
-			os._exit(1)
+			global_var.exit_all()
+			exit()
 		except OSError as e:
 			lg.exception("发生系统错误，准备重启")
 			time.sleep(5)
 			save_cache()
-			os._exit(1)
+			global_var.exit_all()
+			exit()
 	def find_adb_wifi_port(self,retry=50):
 		"""
 		Android 11以上可以在开发人员选项内开启无线调试
 		但是端口隔一段时间会变化，所以要扫描一下
 		"""
+		if global_var.get('exit_all'):
+			exit()
 		try:
 			while retry:
+				if global_var.get('exit_all'):
+					exit()
 				cmd = f'nmap {self.asst_config["connection"]["ip"]} -p 30000-49999 | awk "/\\/tcp/" | cut -d/ -f1'
 				with subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,close_fds=True) as p:
 					out, err = p.communicate(timeout=60)
@@ -246,18 +277,25 @@ class MAA:
 			text = "扫描不到设备ADB端口，不再重试，请排查"
 			lg.error(text)
 			return 0
+		except KeyboardInterrupt:
+			lg.error('检测到KeyboardInterrupt，退出线程')
+			exit()
 		except subprocess.TimeoutExpired as e:
 			lg.exception("发生subprocess.TimeoutExpired错误，准备重启")
 			time.sleep(5)
 			save_cache()
-			os._exit(1)
+			global_var.exit_all()
+			exit()
 		except OSError as e:
 			lg.exception("发生系统错误，准备重启")
 			time.sleep(5)
 			save_cache()
-			os._exit(1)
+			global_var.exit_all()
+			exit()
 	def connect_adb(self):
 		try:
+			if global_var.get('exit_all'):
+				exit()
 			if not self.find_adb_wifi_port():
 				return False
 			cmd = f'{self.asst_config["connection"]["adb"]} connect {self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]}'
@@ -268,20 +306,27 @@ class MAA:
 			if "already" in result or 'connected' in result:
 				return True
 			return False
+		except KeyboardInterrupt:
+			lg.error('检测到KeyboardInterrupt，退出线程')
+			exit()
 		except subprocess.TimeoutExpired as e:
 			lg.exception("发生subprocess.TimeoutExpired错误，准备重启")
 			time.sleep(5)
 			save_cache()
-			os._exit(1)
+			global_var.exit_all()
+			exit()
 		except OSError as e:
 			lg.exception("发生系统错误，准备重启")
 			time.sleep(5)
 			save_cache()
-			os._exit(1)
+			global_var.exit_all()
+			exit()
 	def connect(self, init=False, retry=0):
 		"""
 		通过ADB连接到安卓设备
 		"""
+		if global_var.get('exit_all'):
+			exit()
 		self.connect_log = f"第{retry}次尝试连接ADB"
 		#获取ADB端口
 		if ( init or retry ) and self.asst_config['connection']['scan_port']:
@@ -330,6 +375,8 @@ class MAA:
 		
 		# img,length = self.asst.get_img()
 		try:
+			if global_var.get('exit_all'):
+				exit()
 			img_path = str(Path(__file__).parent.parent / f"img/{file_name}.png")
 			shell_cmd = f'{self.asst_config["connection"]["adb"]} -s '\
 						f'{self.asst_config["connection"]["ip"]}:{self.asst_config["connection"]["port"]} '\
@@ -345,16 +392,21 @@ class MAA:
 				return img
 			else:
 				return length
+		except KeyboardInterrupt:
+			lg.error('检测到KeyboardInterrupt，退出线程')
+			exit()
 		except subprocess.TimeoutExpired as e:
 			lg.exception("发生subprocess.TimeoutExpired错误，准备重启")
 			time.sleep(5)
 			save_cache()
-			os._exit(1)
+			global_var.exit_all()
+			exit()
 		except OSError as e:
 			lg.exception("发生系统错误，准备重启")
 			time.sleep(5)
 			save_cache()
-			os._exit(1)
+			global_var.exit_all()
+			exit()
 
 
 	def add_fight_msg(self, detail):
@@ -364,6 +416,8 @@ class MAA:
 			``details``:  消息具体内容
 		:return: None
 		"""
+		if global_var.get('exit_all'):
+			exit()
 		stage = detail["stage"]["stageCode"]
 		if stage not in self.fight_log['stages']:
 			self.fight_log['stages'][stage] = 1
@@ -381,6 +435,8 @@ class MAA:
 			self.fight_log['msg'] = self.fight_log['msg'][:-1]
 
 	def parse_logic(self, operator,cond) -> bool:
+		if global_var.get('exit_all'):
+			exit()
 		lg.info(f"检查逻辑条件：{operator}")
 		lg.info(cond)
 		if operator == 'not':
@@ -418,6 +474,8 @@ class MAA:
 				return False
 
 	def parse_condition(self,cond:dict):
+		if global_var.get('exit_all'):
+			exit()
 		lg.info("检查任务是否符合启用条件")
 		enable = True
 		now = datetime.datetime.now()
@@ -448,6 +506,8 @@ class MAA:
 		return enable
 
 	def interrupt_tasks_handler(self, data:dict):
+		if global_var.get('exit_all'):
+			exit()
 		config_name = data['name'] if 'name' in data else int(time.time())
 		lg.info(f"正在运行中断任务配置：{config_name}")
 		currentDateAndTime = datetime.datetime.now()
@@ -460,6 +520,8 @@ class MAA:
 		global_var.get("send_msg_waiting_queue").put(recall)
 		task_index = 0
 		while task_index < len(data['tasks']):
+			if global_var.get('exit_all'):
+				exit()
 			task_begin_time = time.time()
 			lg.info(f"正在处理第{task_index}个中断任务")
 			task = data['tasks'][task_index]
@@ -506,25 +568,25 @@ class MAA:
 				if "params" in task and "name" in task['params'] and task['params']["name"] != "" and self.running_config != task['params']["name"]:
 						lg.info("准备清除一份尚未运行的配置")
 						cleaned = False
-						for index in range((global_var.get("tasks_config_waiting_queue").qsize)):
+						for index in range((global_var.get("tasks_config_waiting_queue").qsize())):
 							if global_var.get("tasks_config_waiting_queue").queue[index]['data']["name"] == task['params']["name"]:
 								global_var.get("tasks_config_waiting_queue").queue.remove(global_var.get("tasks_config_waiting_queue").queue[index])
 								lg.info(f"清除队列中排序为{index}的配置")
 								cleaned = True
-								recall['payload'] = f"已清除队列中等待运行的配置：{task['params']['name']}"
+								recall['payload'] += f"已清除队列中等待运行的配置：{task['params']['name']}，其他配置正常运行"
 						if not cleaned:
-							recall['payload'] = f"队列中没有名为{task['params']['name']}的配置"
-							
-				lg.info("停止maa当前任务并设置标记：跳过当前配置")
-				self.stop_tag = '跳过当前配置'
-				self.asst.stop()
-				recall['payload'] = "已下发终止当前配置指令"
+							recall['payload'] += f"队列中没有名为{task['params']['name']}的配置"
+				else:
+					lg.info("停止maa当前任务并设置标记：跳过当前配置")
+					self.stop_tag = '跳过当前配置'
+					self.asst.stop()
+					recall['payload'] += "已下发终止当前正在运行的配置指令"
 			if task['type'] == 'Stop':
 				lg.info("停止maa当前任务并设置标记：停止所有配置")
 				self.stop_tag = '停止所有配置'
 				global_var.set("clean_all_config_tag", True)
 				self.asst.stop()
-				recall['payload'] = "已下发终止所有配置指令"
+				recall['payload'] = "已停止maa当前任务并设置标记：停止所有配置"
 			lg.info("发送回调消息")
 			recall['duration'] = int(time.time()-task_begin_time)
 			global_var.get("send_msg_waiting_queue").put(recall)
@@ -539,6 +601,8 @@ class MAA:
 
 
 	def tasks_handler(self, data: dict):
+		if global_var.get('exit_all'):
+			exit()
 		config_name = data['name'] if 'name' in data else int(time.time())
 		lg.info(f"正在运行配置：{config_name}")
 		self.running_config = config_name
@@ -557,6 +621,8 @@ class MAA:
 		self.recruit_log = ''
 		self.infrast_log = ''
 		while task_index < len(data['tasks']):
+			if global_var.get('exit_all'):
+				exit()
 			task_begin_time = time.time()
 			lg.info(f"正在处理第{task_index}个任务")
 			task = data['tasks'][task_index]
@@ -617,13 +683,17 @@ class MAA:
 					self.asst.append_task(task['type'])
 				lg.info("检查是否需要在运行前截图")
 				img_msg = None
+				screenshot_path = None
 				if ("screenshot" in task and (task['screenshot'] == 'before' or task['screenshot'] =='both')):
+					screenshot_path = str(Path(__file__).parent.parent / f"img/before_{recall['task']}.png")
 					img_msg = self.screenshot(f"before_{recall['task']}",rb=True)
 				lg.info("启动运行")
 				self.asst.start()
 				lg.info("循环等待任务结束")
 				while self.asst.running():
-					time.sleep(0)
+					if global_var.get('exit_all'):
+						exit()
+					time.sleep(1)
 				lg.info("任务结束运行")
 				lg.info(f"检查结束标记：{self.stop_tag}")
 				if self.stop_tag == 'MAA出错':
@@ -733,8 +803,27 @@ class MAA:
 				
 				lg.info("检查是否需要在运行后截图")
 				if "screenshot" in task and (task['screenshot'] == 'after' or task['screenshot'] =='both'):
-					img_msg = self.screenshot(f"after_{recall['task']}",rb=True)
-
+					img_msg = self.screenshot(f"after_{recall['task']}", rb=True)
+					screenshot_path = str(Path(__file__).parent.parent / f"img/after_{recall['task']}.png")
+				if task['type'] == 'Custom' and task["id"] == "任务完成后主界面" and img_msg and (datetime.datetime.now().hour >12 or datetime.datetime.now().hour <4):
+					if match_free_gacha(screenshot_path) > 0.9:
+						text = f"!重要!  今天的免费单抽机会似乎还没用掉，请在任务结束后检查\n"
+						lg.info(text)
+						recall['payload'] += text
+					else:
+						lg.info("未检查到有没用掉的免费单抽")
+					if match_activity(screenshot_path) > 0.9:
+						text = f"!重要!  今天的活动奖励还未领取（紧张刺激的签到活动或合成玉抽签），请在任务结束后检查\n"
+						lg.info(text)
+						recall['payload'] += text
+					else:
+						lg.info("未检查到有没完成的签到/抽签活动")
+					if match_infrast_oops(screenshot_path) > 0.9:
+						text = f"!重要!  基建的某些设施似乎存在异常，请在任务结束后检查\n"
+						lg.info(text)
+						recall['payload'] += text
+					else:
+						lg.info("未检查到基建设施异常")
 				if task['type'] != 'Custom' and task['type'] != 'CloseDown' and task['type'] != 'StartUp':
 					success_tasks.append(task_index-1)
 					text = f"更新最近一个已完成的非custom非启闭任务为：{recall['task']}，序号为{task_index-1}"
