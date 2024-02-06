@@ -1,87 +1,70 @@
+import faulthandler
+faulthandler.enable()
 import platform
-import multiprocessing
 import re
 import os
 import tarfile
 import zipfile
-from multiprocessing import queues, Process
 import requests
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from requests.packages.urllib3.exceptions import InsecureRequestWarning #消除https未验证警告
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from loguru import logger as lg
-import gc
 import json
 from .asst import Asst
 from .utils import Version
-from pathlib import Path
-import yaml
-
-
-proxies={}
-
-with open(str(Path(__file__).parent / "../config/asst.yaml"), 'r', encoding='utf8') as config_f:
-	asst_config = yaml.safe_load(config_f)
-	if 'proxy' in asst_config['python'] and asst_config['python']['proxy']:
-		proxies={'http': asst_config['python']['proxy'],'https': asst_config['python']['proxy']}
-
 import shutil
+import multiprocessing
 
-def download_file(url,path):
-	with requests.get(url, stream=True,proxies=proxies,verify=False) as r:
-		with open(path, 'wb') as f:
-			shutil.copyfileobj(r.raw, f)
-	return path
-
-update_log = ''
 
 class Updater:
 	# API的地址
 	Mirrors = ["https://ota.maa.plus"]
 	Summary_json = "/MaaAssistantArknights/api/version/summary.json"
-
+	ota_tasks_url = 'https://ota.maa.plus/MaaAssistantArknights/api/resource/tasks.json'
+	
 	@staticmethod
-	def custom_print(s):
+	def download_file(url,path,proxies=None):
+		with requests.get(url, stream=True,proxies=proxies,verify=False) as r:
+			with open(path, 'wb') as f:
+				shutil.copyfileobj(r.raw, f)
+		return path
+	def custom_print(self, s, log=False):
 		"""
 		可以被monkey patch的print，在其他GUI上使用可以被替换为任何需要的输出
+		打印信息和返回日志
 		"""
-		global update_log
 		lg.info(s)
-		update_log += s + '\n'
+		if log:
+			self.update_log += s + '\n'
 
 	@staticmethod
-	def _get_cur_version(path, q):
+	def get_cur_version(path):
 		"""
 		从MaaCore.dll获取当前版本号
-		这里是复用原来的方法
 		"""
-		Asst.load(path=path)
-		q.put(Asst().get_version())
+		# 使用子进程获取当前版本后关闭，避免占用共享库。不这么做的话更新替换掉共享库文件后在退出程序会报段错误
+		def _get_cur_version(path, result):
+			Asst.load(path=path)
+			result.put(Asst.get_version())
+		result = multiprocessing.Queue()
+		p = multiprocessing.Process(target=_get_cur_version, args=(path,result))
+		p.start()
+		p.join()
+		return result.get()
 
-	def __init__(self, path, version):
-		lg.info('进入Update构造函数')
+	def __init__(self, path, incremental_path, version, proxies=None, system_platform="linux-x86_64"):
+		self.custom_print('进入Update构造函数')
 		self.path = path
 		self.version = version
 		self.latest_json = None
 		self.latest_version = None
 		self.assets_object = None
-
-
-		lg.info('Asst.load加载资源')
-		Asst.load(path=path)
-		lg.info('Asst构造')
-		asst = Asst()
-		lg.info('Asst获取版本')
-		self.cur_version = asst.get_version()
-		lg.info('清理Asst')
-		del asst
-		gc.collect()
-		# 使用子线程获取当前版本后关闭，避免占用dll
-		# q = queues.Queue(1, ctx=multiprocessing)
-		# p = Process(target=self._get_cur_version, args=(path, q,))
-		# p.start()
-		# p.join()
-		# # MAA当前版本 self.cur_version
-		# self.cur_version = q.get()
+		self.proxies = proxies
+		self.update_log = ''
+		self.system_platform = system_platform
+		self.custom_print('Asst.get_version 获取版本')
+		self.cur_version = self.get_cur_version(path)
+		self.custom_print(f"MAA当前版本 {self.cur_version}")
 
 	@staticmethod
 	def map_version_type(version):
@@ -92,10 +75,11 @@ class Updater:
 		}
 		return type_map.get(version, 'stable')
 
-	def get_latest_version(self):
+	def get_latest_version(self, proxies=None):
 		"""
 		从API获取最新版本
 		"""
+		self.custom_print("从API获取最新版本信息")
 		api_url = self.Mirrors
 		version_summary = self.Summary_json
 		retry = 3
@@ -132,8 +116,7 @@ class Updater:
 				continue
 		return False, False
 
-	@staticmethod
-	def get_download_url(detail):
+	def get_download_url(self, detail):
 		"""
 		1.获取系统及架构信息
 		2.找到对应的版本
@@ -145,7 +128,7 @@ class Updater:
 			系统：Linux、Windows
 		默认Windows x86_64
 		"""
-		system_platform = "linux-x86_64"
+		
 		system = platform.system()
 		if system == 'Linux':
 			machine = platform.machine()
@@ -164,8 +147,9 @@ class Updater:
 				# Windows ARM64
 				system_platform = "win-arm64"
 		# 请求的是https://ota.maa.plus/MaaAssistantArknights/api/version/stable.json，或其他版本类型对应的url
-		detail_data = requests.get(detail,proxies=proxies,verify=False).json()
+		detail_data = requests.get(detail,proxies=self.proxies,verify=False).json()
 		assets_list = detail_data["details"]["assets"]	 # 列表，子元素为字典
+		changelog = detail_data["details"]["body"]	 # 列表，子元素为字典
 		# 找到对应系统和架构的版本
 		for assets in assets_list:
 			"""
@@ -193,90 +177,91 @@ class Updater:
 				github_url = assets["browser_download_url"]
 				# 加上GitHub的release链接
 				mirrors.insert(0,github_url)
-				return mirrors, assets_name, github_url
-		return False, False
+				return mirrors, assets_name, github_url, changelog
+		return False, False, '', ''
 
 	def update(self):
 		"""
 		主函数
 		"""
-		lg.info('进入update主函数')
-		global update_log
+		self.custom_print('进入update主函数')
 		do_updated = False
 		do_OTA = False
-		update_log = ""
 		# 从dll获取MAA的版本
 		current_version = self.cur_version
 		# 从API获取最新版本
 		# latest_version：版本号; version_detail：对应的json地址
 		latest_version, version_detail = self.get_latest_version()
-		self.custom_print(f"MaaAssistantArknights")
-		self.custom_print(f"最新版本：{latest_version}")
-		self.custom_print(f"当前版本：{current_version}")
+		self.custom_print(f"MaaAssistantArknights", log=True)
+		self.custom_print(f"最新版本：{latest_version}", log=True)
+		self.custom_print(f"当前版本：{current_version}", log=True)
 		if not latest_version:  # latest_version为False代表获取失败
-			self.custom_print("获取版本信息失败")
-		elif current_version == latest_version:	 # 通过比较二者是否一致判断是否需要更新（摆烂
-			self.custom_print("当前为最新版本，无需更新")
+			self.custom_print("获取版本信息失败", log=True)
+		elif current_version == latest_version:	 # 通过比较二者是否一致判断是否需要更新
+			self.custom_print("当前为最新版本，无需更新", log=True)
 		else:
-			self.custom_print(f"检测到版本差异，正在更新...")
+			self.custom_print(f"检测到版本差异", log=True)
 			# 开始更新逻辑
 			# 解析version_detail的JSON信息
 			# 通过API获取下载地址列表和对应文件名
-			url_list, filename, github_url = self.get_download_url(version_detail)
+			url_list, filename, github_url, changelog = self.get_download_url(version_detail)
+			version_log = changelog.replace("\\n"*2,'\n').replace('\\n','\n')
+			self.custom_print(f"版本更新主要日志如下：\n{version_log}", log=True)
+			self.custom_print(f"开始下载更新...", log=True)
 			if not url_list:
 				# 如果请求失败则返回False
 				# （此返回值可能会在非Windows-x86_64的程序更新alpha版时出现）
-				self.custom_print("未找到适用于当前系统的更新包")
+				self.custom_print("未找到适用于当前系统的更新包", log=True)
 				# 直接结束
 				return
 			# 将路径和文件名拼合成绝对路径
 			# 默认在maa主程序/MaaCore.dll所在路径下
 			file = os.path.join(self.path, filename)
 			# 下载，调用Downloader下载器，使用url_list（镜像url列表）和file（文件保存路径）两个参数
-			# Proxy参数没加，因为可能有问题（也可能没问题反正我晚上Clash连不上）
 			# 重试10次
 			max_retry = 10
 			for retry_frequency in range(max_retry):
 				try:
-					Updater.custom_print("开始下载" + (f"，第{retry_frequency}次尝试" if retry_frequency > 1 else ""))
+					self.custom_print("开始下载" + (f"，第{retry_frequency}次尝试" if retry_frequency > 1 else ""))
 					#强制使用github_url，不从镜像源获取
-					download_file(github_url,file)
-					# 调用downloader方法进行下载
-					# downloader.file_download(download_url_list=url_list, download_path=file,request_proxies=proxies)
-					break		   #
+					# self.download_file(github_url,file)
+					self.custom_print(f'新版本下载完成，压缩包大小约为{round((os.path.getsize(file))/1024/1024,1)}MB', log=True)
+					# 解压下载的文件，
+					self.custom_print('开始解压数据', log=True)
+					file_extension = os.path.splitext(filename)[1]
+					unzip = False
+					# 根据拓展名选择解压算法
+					# .zip(Windows)/.tar.gz(Linux)
+					if file_extension == '.zip':
+						zfile = zipfile.ZipFile(file, 'r')
+						zfile.extractall(self.path)
+						zfile.close()
+						unzip = True
+						# 删除压缩包
+						# os.remove(file)
+					# .tar.gz拓展名的情况（按照这个方式得到的拓展名是.gz，但是解压的是tar.gz
+					elif file_extension == '.gz':
+						tfile = tarfile.open(file, 'r:gz')
+						tfile.extractall(self.path)
+						tfile.close()
+						unzip = True
+						# 删除压缩包
+						# os.remove(file)
+					if unzip:
+						self.custom_print('更新完成', log=True)
+						do_updated = True
+					else:
+						self.custom_print('解压过程出现异常', log=True)
+					break
 				except Exception as e:
-					Updater.custom_print(e)
+					lg.exception("下载过程出现异常")
+					self.custom_print(str(e))
 					if retry_frequency >= 9:
-						exit(1)
+						self.custom_print("下载失败超过十次，放弃更新", log=True)
 
-			# 解压下载的文件，
-			Updater.custom_print('开始解压更新包')
-			file_extension = os.path.splitext(filename)[1]
-			unzip = False
-			# 根据拓展名选择解压算法
-			# .zip(Windows)/.tar.gz(Linux)
-			if file_extension == '.zip':
-				zfile = zipfile.ZipFile(file, 'r')
-				zfile.extractall(self.path)
-				zfile.close()
-				unzip = True
-			# .tar.gz拓展名的情况（按照这个方式得到的拓展名是.gz，但是解压的是tar.gz
-			elif file_extension == '.gz':
-				tfile = tarfile.open(file, 'r:gz')
-				tfile.extractall(self.path)
-				tfile.close()
-				unzip = True
-			# 删除压缩包
-			os.remove(file)
-			if unzip:
-				Updater.custom_print('更新完成')
-				do_updated = True
-			else:
-				Updater.custom_print('更新未完成')
 
-		self.custom_print(f"尝试OTA热更新资源")
-		ota_tasks_url = 'https://ota.maa.plus/MaaAssistantArknights/api/resource/tasks.json'
-		response = requests.get(ota_tasks_url, proxies=proxies, verify=False)
+		self.custom_print(f"尝试获取OTA热更新资源", log=True)
+		response = requests.get(self.ota_tasks_url, proxies=self.proxies, verify=False)
 		ota_tasks_json = response.json()
 		ota_tasks_path = self.path / 'cache' / 'resource' / 'tasks.json'
 		ota_tasks_bak_path = self.path / 'cache' / 'resource' / 'tasks_bak.json'
@@ -286,26 +271,17 @@ class Updater:
 				file_tasks_json = json.load(f)
 				if ota_tasks_json == file_tasks_json:
 					self.custom_print(f"OTA热更新资源无变化")
-					return do_updated, do_OTA, update_log
+					return do_updated, do_OTA, self.update_log
 		with open(ota_tasks_path, 'w', encoding='utf-8') as f:
 			with open(ota_tasks_bak_path, 'w', encoding='utf-8') as f_bak:
-				response = requests.get(ota_tasks_url, proxies=proxies, verify=False)
-				关卡 = ''
+				response = requests.get(self.ota_tasks_url, proxies=self.proxies, verify=False)
+				task = ''
 				added_key = []
 				for key in response.json():
-					# new = True
-					# for added in added_key:
-					# 	if added in key:
-					# 		new = False
-					# 		break
-					# if new:
-						关卡 += key + '、'
+						task += key + '、'
 						added_key.append(key)
 				do_OTA = True
-				self.custom_print(f"获取到信息：{关卡[:-1]}")
+				self.custom_print(f"获取到信息：{task[:-1]}")
 				f.write(response.text)
 				f_bak.write(response.text)
-			# lg.info('重载Asst')
-			# self.asst.reload()
-
-		return do_updated, do_OTA, update_log
+		return do_updated, do_OTA, self.update_log

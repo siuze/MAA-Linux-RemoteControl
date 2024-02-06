@@ -113,13 +113,15 @@
 					"Control",
 					"Reception",
 					"Office",
+					"Training",
 					"Dorm"
 				],
 				"drones": "Money",
 				"threshold": 0.3,
 				"replenish": true,
-				"dorm_notstationed_enabled": false,
-				"dorm_trust_enabled": true
+				"dorm_notstationed_enabled": true,
+				"dorm_trust_enabled": true,
+				"continue_training": true
 			}
 		},
 		{
@@ -225,7 +227,9 @@
 			"type": "Award",
 			"params": {
 				"award": true,
-				"mail": true
+				"mail": true,
+				"recruit": true,
+				"orundum": true
 			}
 		},
 		{
@@ -251,6 +255,7 @@
 		{
 			"type": "Custom",
 			"id": "任务完成后主界面",
+			"说明":"当任务id为【任务完成后主界面】，且执行任务时间在中午12点以后，凌晨4点以前时，会自动检查提醒是否存在签到活动/合成玉抽签/每日免费单抽没完成以及基建冒红色异常的情况",
 			"screenshot": "after",
 			"params": {
 				"task_names": [
