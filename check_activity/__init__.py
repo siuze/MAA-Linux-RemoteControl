@@ -26,6 +26,6 @@ def match_infrast_oops(img_path='1.png'):
 # print(match_activity('2.png'))
 # print(match_activity('3.jpg'))
 # print(match_activity('/volume1/程序/maa/Python/img/after_任务完成后主界面.png'))
-print(match_infrast_oops('/volume1/程序/maa/Python/img/after_任务完成后主界面.png'))
+# print(match_infrast_oops('/volume1/程序/maa/Python/img/after_任务完成后主界面.png'))
 # print(match_infrast_oops('2.png'))
 # print(match_infrast_oops('3.jpg'))

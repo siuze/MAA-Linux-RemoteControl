@@ -1,3 +1,5 @@
+import faulthandler
+faulthandler.enable()
 from loguru import logger as lg
 import json
 from _global import global_var

@@ -204,6 +204,15 @@ class Asst:
 		"""
 		return Asst.__lib.AsstStart(self.__ptr)
 
+	def connected(self) -> bool:
+		"""
+		检查连接状态
+
+		:return: 是否已连接
+		"""
+		return Asst.__lib.AsstConnected(self.__ptr)
+
+
 	def stop(self) -> bool:
 		"""
 		停止并清空所有任务
@@ -232,7 +241,8 @@ class Asst:
 
 		Asst.__lib.AsstLog(level.encode('utf-8'), message.encode('utf-8'))
 
-	def get_version(self) -> str:
+	@staticmethod
+	def get_version() -> str:
 		"""
 		获取DLL版本号
 
@@ -277,6 +287,9 @@ class Asst:
 
 		Asst.__lib.AsstStart.restype = ctypes.c_bool
 		Asst.__lib.AsstStart.argtypes = (ctypes.c_void_p,)
+
+		Asst.__lib.AsstConnected.restype = ctypes.c_bool
+		Asst.__lib.AsstConnected.argtypes = (ctypes.c_void_p,)
 
 		Asst.__lib.AsstStop.restype = ctypes.c_bool
 		Asst.__lib.AsstStop.argtypes = (ctypes.c_void_p,)
