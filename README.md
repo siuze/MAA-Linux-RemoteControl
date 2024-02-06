@@ -50,6 +50,8 @@
 
 公开招募  
 ![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/ae16d811-26fb-4dca-ba1c-e0ae4704614d)
+![%7BAAF74C4D-043F-4c1b-9266-5E13139B571C%7D](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/a75b0408-30c7-4138-ab70-bb7019bc0f1d)
+
 
 
 任务奖励    
