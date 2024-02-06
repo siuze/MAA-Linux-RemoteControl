@@ -72,6 +72,7 @@ loguru==0.7.2
 PyYAML==6.0.1
 requests==2.31.0
 websocket-client==1.7.0
+opencv-python-headless==4.9.0.80
 ```
 ### 6、运行
 在项目主文件夹下运行：
