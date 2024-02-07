@@ -105,6 +105,9 @@ def my_callback(msg, details, arg) -> None:
 		if m == Message.TaskChainError and (js["taskchain"] in ["StartUp", "Mall" ]):
 			my_maa.stop_tag = '任务链出错' 
 			my_maa.asst.stop()
+		if m == Message.SubTaskError and 'first' in js and js['first'][0] == 'FightBegin':
+			my_maa.stop_tag = '作战启动检查异常' 
+			my_maa.asst.stop()
 		# send_msg(text) #先不发送了，防止刷屏消息被封
 		# if  maa.stop_tag != 'MAA出错':
 		# 	maa.stop_tag = 'MAA出错'
@@ -787,6 +790,13 @@ class MAA:
 				# 	recall['duration'] = int(time.time()-task_begin_time)
 				# 	global_var.get("send_msg_waiting_queue").put(recall)
 				# 	return 
+				if self.stop_tag == '作战启动检查异常' :
+					lg.error('作战启动检查异常，先sleep五分钟等待作战结束再重新运行配置')
+					self.stop_tag = '正常'
+					task_index = 0
+					self.asst.stop()
+					time.sleep(5*60)
+					continue
 				if self.stop_tag == '任务链出错' :
 					if task['type'] == 'Award':
 						lg.error('Award报错，暂时跳过')
