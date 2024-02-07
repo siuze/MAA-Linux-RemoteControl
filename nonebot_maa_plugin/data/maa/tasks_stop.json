@@ -1,0 +1,13 @@
+[
+	{
+		"name": "立即终止",
+		"type": "interrupt",
+		"priority": 0,
+		"tasks": [
+		  {
+			"type": "Stop",
+			"id": "终止所有配置"
+		  }
+		]
+	  }
+]
