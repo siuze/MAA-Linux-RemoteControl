@@ -1,0 +1,16 @@
+{
+	"type": "Fight",
+	"id": "模板任务",
+	"screenshot": "after",
+	"enable": false,
+	"params": {
+		"expiring_medicine": 1000,
+		"stage": "1-7",
+		"times": 5
+	  },
+	  "condition": {
+		  "weekday": [
+			1
+		  ]
+	}
+  }

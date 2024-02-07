@@ -1,0 +1,12 @@
+[
+	{
+		"name": "更新MAA内核",
+		"priority": 0,
+		"tasks": [
+		  {
+			"type": "Update",
+			"id": "MAA更新"
+		  }
+		]
+	  }
+]
