@@ -13,6 +13,7 @@ import signal
 import base64
 from loguru import logger as lg
 import gc
+import copy
 import uuid
 from cache import save_cache
 
@@ -468,7 +469,7 @@ class MAA:
 		"""
 		解析任务配置中的逻辑条件限制
 		:params:
-			``operator``: str 逻辑条件类型 "and" | "or" | "not" | "id"
+			``operator``: str 逻辑条件类型 "and" | "or" | "not" | "executed" | "enable"
 			``cond``: 待判断内容 
 		:return: bool 条件检查是否通过
 		"""
@@ -501,19 +502,25 @@ class MAA:
 					lg.info("or 条件检查部分不通过")
 			lg.info("or 条件检查不通过")
 			return False
-		if operator == 'id':
-			if cond in self.config_success_fight_id:
-				lg.info("任务有效性检查通过")
+		if operator == 'id' or operator == 'executed':
+			if cond in self.config_executed_fight_id:
+				lg.info("【战斗任务已实际执行过】检查项目通过")
 				return True
 			else:
-				lg.info("任务有效性检查不通过")
+				lg.info("【战斗任务已实际执行过】检查项目不通过")
 				return False
-
+		if operator == 'enable':
+			if cond in self.config_enable_tasks:
+				lg.info("【任务已启用】检查项目通过")
+				return True
+			else:
+				lg.info("【任务已启用】检查项目不通过")
+				return False
 	def parse_condition(self,cond:dict):
 		"""
 		解析任务配置中的条件限制
 		:params:
-			``operator``: str 逻辑条件类型 "and" | "or" | "not" | "id"
+			``operator``: str 逻辑条件类型 "and" | "or" | "not" | "executed" | "enable"
 			``cond``: dict 待判断内容 
 		:return: bool 条件检查是否通过，能否启用该任务
 		"""
@@ -563,6 +570,7 @@ class MAA:
 					"payload": f"{currentTime}\n开始运行中断配置：{config_name}",
 					"status": "BEGIN",
 					"type": "interrupt_config_notice",
+					'config': self.config_content_without_tasks(data)
 				}
 		global_var.get("send_msg_waiting_queue").put(recall)
 		task_index = 0
@@ -584,7 +592,8 @@ class MAA:
 						"image": "",
 						"type": "interrupt_task_report",
 						"name": config_name,
-						"task_config": task
+						"task_config": task,
+						"config": self.config_content_without_tasks(data)
 					}
 			task_index += 1
 			if task['type'] == 'Screenshot':
@@ -641,6 +650,7 @@ class MAA:
 					"payload": f"{currentTime}\n运行结束：{config_name}",
 					"status": "END",
 					"type": "interrupt_config_notice",
+					"config": self.config_content_without_tasks(data)
 				}
 		global_var.get("send_msg_waiting_queue").put(recall)
 
@@ -656,12 +666,23 @@ class MAA:
 					"payload": f"{currentTime}\n开始运行配置：{config_name}",
 					"status": "BEGIN",
 					"type": "normal_config_notice",
+					"config": self.config_content_without_tasks(data)
 				}
 		global_var.get("send_msg_waiting_queue").put(recall)
 		task_index = 0
 		retry = 0
 		success_tasks = []
-		self.config_success_fight_id = []
+		self.config_executed_fight_id = []
+		self.config_enable_tasks = []
+		self.fight_block_flag = False
+		for task in data['tasks']:
+			if 'enable' in task:
+				if task['enable']:
+					if 'id' in task:
+						self.config_enable_tasks.append(task['id'])
+			else:
+				if 'id' in task:
+					self.config_enable_tasks.append(task['id'])
 		self.log['recruit'] = ''
 		self.log['infrast'] = ''
 		while task_index < len(data['tasks']):
@@ -682,7 +703,8 @@ class MAA:
 						"image": "",
 						"type": "normal_task_report",
 						"name": config_name,
-						"task_config": task
+						"task_config": task,
+						"config": self.config_content_without_tasks(data)
 
 					}
 			task_index += 1
@@ -703,6 +725,13 @@ class MAA:
 				if 'enable' in task and task['enable'] == False:
 					lg.info("该任务未启用，跳过")
 					continue
+				lg.info("检查任务是否被阻塞")
+				if self.fight_block_flag and task['type'] == 'Fight':
+					lg.info("该任务被阻塞，跳过")
+					continue
+				if 'block' in task and task['block'] == 'enable':
+					self.fight_block_flag = True
+					lg.info("检查到配置项[启动时阻塞]已启用，已设置阻塞标记，阻止之后的所有战斗任务执行")
 				if 'condition' in task:
 					if not self.parse_condition(task['condition']):
 						lg.info("任务条件检查未通过，跳过当前任务")
@@ -760,9 +789,13 @@ class MAA:
 				if self.log['fight']['sanity']:
 					recall['payload'] += "\n" + self.log['fight']['sanity']
 				if len(self.log['fight']['stages']) > 0:
-					self.config_success_fight_id.append(task['id'])
+					self.config_executed_fight_id.append(task['id'])
+					if 'block' in task and task['block'] == 'executed':
+						lg.info("检查到配置项[执行后阻塞]已启用，已设置阻塞标记，阻止之后的所有战斗任务执行")
+						self.fight_block_flag = True
+
 				lg.info("现在成功有效执行了的Fight任务有：")
-				lg.info(self.config_success_fight_id)
+				lg.info(self.config_executed_fight_id)
 	
 				if task['type'] == 'Recruit' and self.log['recruit']:
 					if recall['payload']:
@@ -857,7 +890,7 @@ class MAA:
 				if "screenshot" in task and (task['screenshot'] == 'after' or task['screenshot'] =='both'):
 					img_msg = self.screenshot(f"after_{recall['task']}", rb=True)
 					screenshot_path = str(Path(__file__).parent.parent / f"img/after_{recall['task']}.png")
-				if task['type'] == 'Custom' and task["id"] == "任务完成后主界面" and img_msg and (datetime.datetime.now().hour >12 or datetime.datetime.now().hour <4):
+				if task['type'] == 'Custom' and task["id"] == "任务完成后主界面" and img_msg and (datetime.datetime.now().hour >=12 or datetime.datetime.now().hour <4):
 					if match_free_gacha(screenshot_path) > 0.9:
 						text = f"!重要!  今天的免费单抽机会似乎还没用掉，请在任务结束后检查\n"
 						lg.info(text)
@@ -920,7 +953,11 @@ class MAA:
 					"payload": f"{currentTime}\n运行结束：{config_name}",
 					"status": "END",
 					"type": "normal_config_notice",
+					"config": self.config_content_without_tasks(data)
 				}
 		global_var.get("send_msg_waiting_queue").put(recall)
-		
-
+	def config_content_without_tasks(self,data):
+		data_lite = copy.deepcopy(data)
+		if 'tasks' in data_lite:
+			del data_lite['tasks']
+		return data_lite
