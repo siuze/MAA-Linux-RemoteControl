@@ -224,7 +224,7 @@ class Updater:
 				try:
 					self.custom_print("开始下载" + (f"，第{retry_frequency}次尝试" if retry_frequency > 1 else ""))
 					#强制使用github_url，不从镜像源获取
-					# self.download_file(github_url,file)
+					self.download_file(github_url,file)
 					self.custom_print(f'新版本下载完成，压缩包大小约为{round((os.path.getsize(file))/1024/1024,1)}MB', log=True)
 					# 解压下载的文件，
 					self.custom_print('开始解压数据', log=True)
@@ -238,7 +238,7 @@ class Updater:
 						zfile.close()
 						unzip = True
 						# 删除压缩包
-						# os.remove(file)
+						os.remove(file)
 					# .tar.gz拓展名的情况（按照这个方式得到的拓展名是.gz，但是解压的是tar.gz
 					elif file_extension == '.gz':
 						tfile = tarfile.open(file, 'r:gz')
@@ -246,7 +246,7 @@ class Updater:
 						tfile.close()
 						unzip = True
 						# 删除压缩包
-						# os.remove(file)
+						os.remove(file)
 					if unzip:
 						self.custom_print('更新完成', log=True)
 						do_updated = True
