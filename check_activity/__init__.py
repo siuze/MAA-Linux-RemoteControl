@@ -10,9 +10,11 @@ def match_free_gacha(img_path='1.png'):
 	return max_val
 def match_activity(img_path='1.png'):
 	img = cv2.imread(img_path)
-	img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-	template = cv2.imread(str(Path(__file__).parent / f"template/twinkle_square.png"), 0)
-	res = cv2.matchTemplate(img[70:250, 0:200] , template, cv2.TM_CCOEFF_NORMED)
+	imageNeedleR, imageNeedleG, imgB = cv2.split(img)
+	# img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+	template = cv2.imread(str(Path(__file__).parent / f"template/twinkle_square.png"))
+	imageNeedleR, imageNeedleG, templateB = cv2.split(template)
+	res = cv2.matchTemplate(imgB[70:250, 0:200] , templateB, cv2.TM_CCOEFF_NORMED)
 	min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 	return max_val
 def match_infrast_oops(img_path='1.png'):
