@@ -1,0 +1,41 @@
+{
+    "HS-OpenOcr": {
+        "baseTask": "SS-OpenOcr", 
+        "text": [
+            "怀黍离", 
+            "荒城", 
+            "大江北岸", 
+            "核心"
+        ], 
+        "ocrReplace": [
+            [
+                "怀.*离", 
+                "怀黍离"
+            ]
+        ], 
+        "next": [
+            "HSChapterToHS"
+        ]
+    },
+    "HS-Open": {
+        "action": "ClickSelf", 
+        "algorithm": "OcrDetect", 
+        "text": [
+            "怀黍离", 
+            "活动已开放", 
+            "关卡已开放", 
+            "大江北岸", 
+            "荒城核心"
+        ], 
+        "roi": [
+            0, 
+            500, 
+            500, 
+            150
+        ], 
+        "postDelay": 2500, 
+        "next": [
+            "HSChapterToHS"
+        ]
+    }
+}

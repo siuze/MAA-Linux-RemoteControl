@@ -284,7 +284,7 @@ class MAA:
 		custom_ota_tasks_path = Path(__file__).parent.parent / "custom/cache/resource/tasks.json"
 		official_ota_tasks_path = self.core_path / "cache/resource/tasks.json"
 		if os.path.exists(custom_ota_tasks_path) and os.path.exists(official_ota_tasks_path):
-			with open(official_ota_tasks_path, 'r', encoding='utf8') as file:
+			with open(custom_ota_tasks_path, 'r', encoding='utf8') as file:
 				customs_tasks = json.load(file)	#读取自定义任务动作
 			with open(official_ota_tasks_path, 'r', encoding='utf8') as file:
 				official_tasks = json.load(file)	#读取官方任务动作
