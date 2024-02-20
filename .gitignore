@@ -1,7 +1,8 @@
 # dir 不需要提交的目录
 /config
-*/__pycache__
+**/__pycache__
 /__pycache__
+**/.*_cache
 /tmp
 # file 不需要提交的文件
 run.sh
