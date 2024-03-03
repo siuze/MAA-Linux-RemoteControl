@@ -95,8 +95,12 @@ def my_callback(msg, details, arg) -> None:
 			my_maa.stop_tag = "任务链出错"
 			my_maa.asst.stop()
 		if m == Message.SubTaskError and "first" in js and js["first"][0] == "FightBegin":
-			my_maa.stop_tag = "作战启动检查异常"
+			if my_maa.stop_tag != "关卡导航异常":
+				my_maa.stop_tag = "作战启动检查异常"
 			my_maa.asst.stop()
+		if m == Message.SubTaskError and "subtask" in js and js["subtask"] == "StageNavigationTask":
+			my_maa.stop_tag = "关卡导航异常"
+			# my_maa.asst.stop()
 		# send_msg(text) #先不发送了，防止刷屏消息被封
 		# if  maa.stop_tag != 'MAA出错':
 		# 	maa.stop_tag = 'MAA出错'
@@ -583,12 +587,18 @@ class MAA:
 				if "params" in task and "name" in task["params"] and task["params"]["name"] != "" and self.running_config != task["params"]["name"]:
 					lg.info("准备清除一份尚未运行的配置")
 					cleaned = False
-					for index in range((global_var.get("tasks_config_waiting_queue").qsize())):
-						if global_var.get("tasks_config_waiting_queue").queue[index]["data"]["name"] == task["params"]["name"]:
-							global_var.get("tasks_config_waiting_queue").queue.remove(global_var.get("tasks_config_waiting_queue").queue[index])
-							lg.info(f"清除队列中排序为{index}的配置")
-							cleaned = True
-							recall["payload"] += f"已清除队列中等待运行的配置：{task['params']['name']}，其他配置正常运行"
+					while True:
+						deleted = False
+						for index in range((global_var.get("tasks_config_waiting_queue").qsize())):
+							if global_var.get("tasks_config_waiting_queue").queue[index]["data"]["name"] == task["params"]["name"]:
+								global_var.get("tasks_config_waiting_queue").queue.remove(global_var.get("tasks_config_waiting_queue").queue[index])
+								lg.info(f"清除队列中排序为{index}的配置")
+								cleaned = True
+								deleted = True
+								recall["payload"] += f"已清除队列中等待运行的配置：{task['params']['name']}，其他配置正常运行"
+								break
+						if not deleted:
+							break
 					if not cleaned:
 						recall["payload"] += f"队列中没有名为{task['params']['name']}的配置"
 				else:
@@ -760,14 +770,27 @@ class MAA:
 				# 	recall['duration'] = int(time.time()-task_begin_time)
 				# 	global_var.get("send_msg_waiting_queue").put(recall)
 				# 	return
-				if self.stop_tag == "作战启动检查异常":
-					lg.error("作战启动检查异常，先sleep五分钟等待作战结束再重新运行配置")
+				if self.stop_tag == "关卡导航异常":
+					text = "关卡导航异常，将无视block配置，继续执行后续备选作战任务"
+					lg.error(text)
+					if recall["payload"]:
+						recall["payload"] += "\n"
+					recall["payload"] += text
+					recall["status"] = "FAILED"
 					self.stop_tag = "正常"
 					self.fight_block_flag = False
-					task_index = 0
-					self.asst.stop()
-					time.sleep(5 * 60)
-					continue
+				if self.stop_tag == "作战启动检查异常":
+					if "stage" in task["params"] and task["params"]["stage"][:2] in ["CE", "AP", "SK", "CA", "PR"]:
+						self.stop_tag = "正常"
+						self.fight_block_flag = False
+					else:
+						lg.error("作战启动检查异常，先sleep五分钟等待作战结束再重新运行配置")
+						self.stop_tag = "正常"
+						self.fight_block_flag = False
+						task_index = 0
+						self.asst.stop()
+						time.sleep(5 * 60)
+						continue
 				if self.stop_tag == "任务链出错":
 					if task["type"] == "Award":
 						lg.error("Award报错，暂时跳过")
@@ -885,6 +908,7 @@ class MAA:
 				global_var.get("send_msg_waiting_queue").put(recall)
 
 				lg.info("清理任务队列，等待后续任务执行")
+				self.stop_tag = "正常"
 				retry = 0
 				self.asst.stop()
 		currentDateAndTime = datetime.datetime.now()
