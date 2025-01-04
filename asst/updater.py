@@ -6,7 +6,8 @@ import re
 import shutil
 import tarfile
 import zipfile
-
+import time
+import datetime
 import requests
 from loguru import logger as lg
 from requests.packages.urllib3.exceptions import InsecureRequestWarning  # 消除https未验证警告
@@ -14,7 +15,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning  # 消�
 from .asst import Asst
 from .utils import Version
 
-
+# tar -xzvf MAA-06c9c98-linux-x86_64.tar.gz
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
@@ -69,6 +70,11 @@ class Updater:
 		self.system_platform = system_platform
 		self.custom_print("Asst.get_version 获取版本")
 		self.cur_version = self.get_cur_version(path)
+		ts = os.path.getctime(path / 'maa')
+		ts_str = datetime.datetime.fromtimestamp(ts).isoformat()
+		self.current_version_created_at  = ts
+		self.current_version_created_at_str  = ts_str
+		
 		self.custom_print(f"MAA当前版本 {self.cur_version}")
 
 	@staticmethod
@@ -76,7 +82,7 @@ class Updater:
 		type_map = {Version.Nightly: "alpha", Version.Beta: "beta", Version.Stable: "stable"}
 		return type_map.get(version, "stable")
 
-	def get_latest_version(self, proxies=None):
+	def get_latest_version(self):
 		"""
 		从API获取最新版本
 		"""
@@ -89,7 +95,7 @@ class Updater:
 			i = retry_times % len(api_url)
 			request_url = api_url[i] + version_summary
 			try:
-				response_data = requests.get(request_url, proxies=proxies, verify=False).json()
+				response_data = requests.get(request_url, proxies=self.proxies, verify=False).json()
 				"""
 				解析JSON
 				e.g.
@@ -151,6 +157,7 @@ class Updater:
 		detail_data = requests.get(detail, proxies=self.proxies, verify=False).json()
 		assets_list = detail_data["details"]["assets"]  # 列表，子元素为字典
 		changelog = detail_data["details"]["body"]  # 列表，子元素为字典
+		created_at = detail_data["details"]["created_at"]  # 列表，子元素为字典
 		# 找到对应系统和架构的版本
 		for assets in assets_list:
 			"""
@@ -178,8 +185,8 @@ class Updater:
 				github_url = assets["browser_download_url"]
 				# 加上GitHub的release链接
 				mirrors.insert(0, github_url)
-				return mirrors, assets_name, github_url, changelog
-		return False, False, "", ""
+				return mirrors, assets_name, github_url, changelog, created_at
+		return False, False, "", "", ""
 
 	def update(self):
 		"""
@@ -190,12 +197,15 @@ class Updater:
 		do_OTA = False
 		# 从dll获取MAA的版本
 		current_version = self.cur_version
+		current_version_created_at = self.current_version_created_at
+		current_version_created_at_str = self.current_version_created_at_str
 		# 从API获取最新版本
 		# latest_version：版本号; version_detail：对应的json地址
 		latest_version, version_detail = self.get_latest_version()
+		url_list, filename, github_url, changelog, created_at = self.get_download_url(version_detail)
 		self.custom_print("MaaAssistantArknights", log=True)
-		self.custom_print(f"最新版本：{latest_version}", log=True)
-		self.custom_print(f"当前版本：{current_version}", log=True)
+		self.custom_print(f"最新版本：{latest_version} {created_at}", log=True)
+		self.custom_print(f"当前版本：{current_version} {current_version_created_at_str}", log=True)
 		if not latest_version:  # latest_version为False代表获取失败
 			self.custom_print("获取版本信息失败", log=True)
 		elif current_version == latest_version:  # 通过比较二者是否一致判断是否需要更新
@@ -205,60 +215,63 @@ class Updater:
 			# 开始更新逻辑
 			# 解析version_detail的JSON信息
 			# 通过API获取下载地址列表和对应文件名
-			url_list, filename, github_url, changelog = self.get_download_url(version_detail)
-			version_log = changelog.replace("\\n" * 2, "\n").replace("\\n", "\n")
-			self.custom_print(f"版本更新主要日志如下：\n{version_log}", log=True)
-			self.custom_print("开始下载更新...", log=True)
-			if not url_list:
-				# 如果请求失败则返回False
-				# （此返回值可能会在非Windows-x86_64的程序更新alpha版时出现）
-				self.custom_print("未找到适用于当前系统的更新包", log=True)
-				# 直接结束
-				return
-			# 将路径和文件名拼合成绝对路径
-			# 默认在maa主程序/MaaCore.dll所在路径下
-			file = os.path.join(self.path, filename)
-			# 下载，调用Downloader下载器，使用url_list（镜像url列表）和file（文件保存路径）两个参数
-			# 重试10次
-			max_retry = 10
-			for retry_frequency in range(max_retry):
-				try:
-					self.custom_print("开始下载" + (f"，第{retry_frequency}次尝试" if retry_frequency > 1 else ""))
-					# 强制使用github_url，不从镜像源获取
-					self.download_file(github_url, file)
-					self.custom_print(f"新版本下载完成，压缩包大小约为{round((os.path.getsize(file))/1024/1024,1)}MB", log=True)
-					# 解压下载的文件，
-					self.custom_print("开始解压数据", log=True)
-					file_extension = os.path.splitext(filename)[1]
-					unzip = False
-					# 根据拓展名选择解压算法
-					# .zip(Windows)/.tar.gz(Linux)
-					if file_extension == ".zip":
-						zfile = zipfile.ZipFile(file, "r")
-						zfile.extractall(self.path)
-						zfile.close()
-						unzip = True
-						# 删除压缩包
-						os.remove(file)
-					# .tar.gz拓展名的情况（按照这个方式得到的拓展名是.gz，但是解压的是tar.gz
-					elif file_extension == ".gz":
-						tfile = tarfile.open(file, "r:gz")
-						tfile.extractall(self.path)
-						tfile.close()
-						unzip = True
-						# 删除压缩包
-						os.remove(file)
-					if unzip:
-						self.custom_print("更新完成", log=True)
-						do_updated = True
-					else:
-						self.custom_print("解压过程出现异常", log=True)
-					break
-				except Exception as e:
-					lg.exception("下载过程出现异常")
-					self.custom_print(str(e))
-					if retry_frequency >= 9:
-						self.custom_print("下载失败超过十次，放弃更新", log=True)
+			if time.mktime(time.strptime(created_at, "%Y-%m-%dT%H:%M:%S%z")) <  current_version_created_at and latest_version[:6] == current_version[:6]:  # 通过比较二者是否一致判断是否需要更新"created_at": "2024-04-29T03:14:31Z",
+				self.custom_print("版本号存在差异，但本地版本日期更新，不进行更新", log=True)
+				# return do_updated, do_OTA, self.update_log
+			else:
+				version_log = changelog.replace("\\n" * 2, "\n").replace("\\n", "\n")
+				self.custom_print(f"版本更新主要日志如下：\n{version_log}", log=True)
+				self.custom_print("开始下载更新...", log=True)
+				if not url_list:
+					# 如果请求失败则返回False
+					# （此返回值可能会在非Windows-x86_64的程序更新alpha版时出现）
+					self.custom_print("未找到适用于当前系统的更新包", log=True)
+					# 直接结束
+					return
+				# 将路径和文件名拼合成绝对路径
+				# 默认在maa主程序/MaaCore.dll所在路径下
+				file = os.path.join(self.path, filename)
+				# 下载，调用Downloader下载器，使用url_list（镜像url列表）和file（文件保存路径）两个参数
+				# 重试10次
+				max_retry = 10
+				for retry_frequency in range(max_retry):
+					try:
+						self.custom_print("开始下载" + (f"，第{retry_frequency}次尝试" if retry_frequency > 1 else ""))
+						# 强制使用github_url，不从镜像源获取
+						self.download_file(github_url, file, self.proxies)
+						self.custom_print(f"新版本下载完成，压缩包大小约为{round((os.path.getsize(file))/1024/1024,1)}MB", log=True)
+						# 解压下载的文件，
+						self.custom_print("开始解压数据", log=True)
+						file_extension = os.path.splitext(filename)[1]
+						unzip = False
+						# 根据拓展名选择解压算法
+						# .zip(Windows)/.tar.gz(Linux)
+						if file_extension == ".zip":
+							zfile = zipfile.ZipFile(file, "r")
+							zfile.extractall(self.path)
+							zfile.close()
+							unzip = True
+							# 删除压缩包
+							os.remove(file)
+						# .tar.gz拓展名的情况（按照这个方式得到的拓展名是.gz，但是解压的是tar.gz
+						elif file_extension == ".gz":
+							tfile = tarfile.open(file, "r:gz")
+							tfile.extractall(self.path)
+							tfile.close()
+							unzip = True
+							# 删除压缩包
+							os.remove(file)
+						if unzip:
+							self.custom_print("更新完成", log=True)
+							do_updated = True
+						else:
+							self.custom_print("解压过程出现异常", log=True)
+						break
+					except Exception as e:
+						lg.exception("下载过程出现异常")
+						self.custom_print(str(e))
+						if retry_frequency >= 9:
+							self.custom_print("下载失败超过十次，放弃更新", log=True)
 
 		self.custom_print("尝试获取OTA热更新资源", log=True)
 		response = requests.get(self.ota_tasks_url, proxies=self.proxies, verify=False)
@@ -270,7 +283,7 @@ class Updater:
 			with open(ota_tasks_bak_path, "r", encoding="utf-8") as f:
 				file_tasks_json = json.load(f)
 				if ota_tasks_json == file_tasks_json:
-					self.custom_print("OTA热更新资源无变化")
+					self.custom_print("OTA热更新资源无变化", log=True)
 					return do_updated, do_OTA, self.update_log
 		with open(ota_tasks_path, "w", encoding="utf-8") as f:
 			with open(ota_tasks_bak_path, "w", encoding="utf-8") as f_bak:
@@ -281,7 +294,7 @@ class Updater:
 					task += key + "、"
 					added_key.append(key)
 				do_OTA = True
-				self.custom_print(f"获取到信息：{task[:-1]}")
+				self.custom_print(f"获取到信息：{task[:-1]}", log=True)
 				f.write(response.text)
 				f_bak.write(response.text)
 		return do_updated, do_OTA, self.update_log
