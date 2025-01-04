@@ -1,41 +1,15 @@
 {
-    "HS-OpenOcr": {
-        "baseTask": "SS-OpenOcr", 
-        "text": [
-            "怀黍离", 
-            "荒城", 
-            "大江北岸", 
-            "核心"
-        ], 
-        "ocrReplace": [
-            [
-                "怀.*离", 
-                "怀黍离"
-            ]
-        ], 
-        "next": [
-            "HSChapterToHS"
-        ]
-    },
-    "HS-Open": {
-        "action": "ClickSelf", 
-        "algorithm": "OcrDetect", 
-        "text": [
-            "怀黍离", 
-            "活动已开放", 
-            "关卡已开放", 
-            "大江北岸", 
-            "荒城核心"
-        ], 
-        "roi": [
+    "ChapterSwipeToTheRight": {
+        "Doc": "滑动到最右", 
+        "baseTask": "ChapterSlowlySwipeToTheRight", 
+        "specialParams": [
+            150, 
             0, 
-            500, 
-            500, 
-            150
+            0.5
         ], 
-        "postDelay": 2500, 
         "next": [
-            "HSChapterToHS"
-        ]
+            "#self"
+        ], 
+        "maxTimes": 8
     }
 }

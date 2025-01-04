@@ -66,6 +66,7 @@ def handle_tasks_config_waiting_queue():
 					global_var.set("clean_all_config_tag", False)
 				save_cache()
 				lg.info(f"一般任务配置队列中剩余{global_var.get('tasks_config_waiting_queue').qsize()}个任务配置")
+				time.sleep(120) # 休息两分钟
 			else:
 				if not sleep_state and global_var.get("interrupt_tasks_waiting_queue").empty():
 					lg.info("任务配置队列已全部处理完（含中断任务）")
