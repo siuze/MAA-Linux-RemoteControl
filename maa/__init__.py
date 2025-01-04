@@ -19,7 +19,7 @@ from check_activity import match_activity, match_free_gacha, match_infrast_oops
 from loguru import logger as lg
 
 facility_map = {"Mfg": "制造站", "Trade": "贸易站", "Power": "发电站", "Control": "控制中枢", "Reception": "会客室", "Office": "人力办公室", "Dorm": "宿舍", "Training": "训练室"}
-
+connect_state = {'screen': False}
 
 def execute_linux(cmd, timeout=30, skip=False):
 	"""
@@ -86,6 +86,9 @@ def my_callback(msg, details, arg) -> None:
 		lg.info("检查到exit_all标记，退出本线程")
 		exit()
 	my_maa = global_var.get("my_maa")
+	if msg == 5:
+		lg.info("收到msg 5")
+		return
 	m = Message(msg)
 	js = json.loads(details.decode("utf-8"))
 	if m == Message.InternalError or m == Message.SubTaskError or m == Message.TaskChainError:
@@ -121,6 +124,7 @@ def my_callback(msg, details, arg) -> None:
 		elif what == "ResolutionGot":
 			text = f"获取到ADB设备分辨率：{js['details']['height']} X {js['details']['width']}"
 			lg.info(text)
+			connect_state['screen'] = False
 			my_maa.log["connect"] += text + "\n"
 		elif what == "StageDrops":
 			my_maa.add_fight_msg(js["details"])
@@ -130,7 +134,7 @@ def my_callback(msg, details, arg) -> None:
 			my_maa.stop_tag = "需要重连"
 			my_maa.asst.stop()
 		elif what == "RecruitSpecialTag":
-			my_maa.log["recruit"] += f"识别到稀有标签：【{js['details']['tag']}】\n"
+			my_maa.log["recruit"] += f"!重要!  识别到稀有标签：【{js['details']['tag']}】\n"
 		elif what == "RecruitResult":
 			if js["details"]["level"] >= 5:
 				my_maa.log["recruit"] += "!重要!  存在五星或以上的公招标签组合，请在任务结束后检查：\n"
