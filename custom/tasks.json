@@ -26,7 +26,12 @@
 			"Task.png",
 			"TaskDark.png",
 			"TaskSami.png",
-			"TaskMistCity.png"
+			"TaskMistCity.png",
+			"TaskSiege.png",
+			"TaskSarkaz.png",
+			"TaskDelicious.png",
+			"TaskGaming.png",
+			"TaskDahuangCity.png"
 		],
 		"cache": false,
 		"templThreshold": 0.7,
@@ -181,18 +186,18 @@
 		"templThreshold": 0.5
 	},
 	"StartButton1TryAgain": {
-        "baseTask": "StartButton1", 
-        "exceededNext": [], 
-        "reduceOtherTimes": [], 
-        "preDelay": 3000, 
-        "postDelay_Doc": "理智不足时弹出吃药界面约需两秒，理智足够则不到一秒就能进入StartButton2", 
-        "postDelay": 5000, 
-        "rectMove_Doc": "点击“行动”避免第二次点击时点到StartButton2", 
-        "rectMove": [
-            38, 
-            0, 
-            35, 
-            17
-        ]
-    }
+		"baseTask": "StartButton1",
+		"exceededNext": [],
+		"reduceOtherTimes": [],
+		"preDelay": 3000,
+		"postDelay_Doc": "理智不足时弹出吃药界面约需两秒，理智足够则不到一秒就能进入StartButton2",
+		"postDelay": 5000,
+		"rectMove_Doc": "点击“行动”避免第二次点击时点到StartButton2",
+		"rectMove": [
+			38,
+			0,
+			35,
+			17
+		]
+	}
 }
