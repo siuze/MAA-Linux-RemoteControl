@@ -1,10 +1,7 @@
 [
     {
         "id": "测试配置", 
-        "qq": "可以自行添加额外的键值对，在运行结果通知里也会附带", 
         "type": "normal", 
-        "priority": 0, 
-        "delay": 0, 
         "tasks": [
             {
                 "type": "CloseDown", 

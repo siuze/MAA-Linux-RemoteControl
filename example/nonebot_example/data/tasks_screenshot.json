@@ -2,6 +2,7 @@
 	{
 		"id": "立即截图",
 		"type": "interrupt",
+		"priority": 0,
 		"tasks": [
 		  {
 			"type": "Screenshot",
