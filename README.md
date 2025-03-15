@@ -70,6 +70,8 @@
    python __init__.py
 ```
 
+> 不想自己研究的话也可以加入我的MAA代挂托管群（275264699），一个月4块(๑╹◡╹)ﾉ"""
+
 ## 交互协议说明
 见[本项目wiki](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/交互协议说明)
 ## 任务配置说明
