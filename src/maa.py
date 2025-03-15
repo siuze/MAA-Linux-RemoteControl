@@ -692,9 +692,9 @@ class MAA:
 						lg.info("准备清除一份尚未运行的配置")
 						cleaned = False
 						for _ in range(len(self.待执行的一般配置队列)):
-							config = self.待执行的一般配置队列.popleft()
-							if config["id"] != 需要删除的配置名:
-								self.待执行的一般配置队列.append(config)
+							del_config = self.待执行的一般配置队列.popleft()
+							if del_config["id"] != 需要删除的配置名:
+								self.待执行的一般配置队列.append(del_config)
 							else:
 								lg.info(f"清除队列中一份配置：{需要删除的配置名}")
 								cleaned = True
