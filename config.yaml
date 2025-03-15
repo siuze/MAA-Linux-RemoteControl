@@ -1,0 +1,15 @@
+connection:
+  adb: adb
+  config: CompatPOSIXShell
+  ip: 127.0.0.1
+  port: 5555
+  scan_port: false
+
+instance_options:
+  touch_mode: maatouch
+
+python:
+  debug: false
+  auto_update: true
+  proxy: http://127.0.0.1:7890
+  ws: ws://127.0.0.1:8068/maa  #连接到服务端的地址

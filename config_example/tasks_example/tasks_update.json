@@ -1,9 +1,0 @@
-{
-	"name": "更新MAA内核",
-	"tasks": [
-		{
-			"type": "Update",
-			"id": "MAA更新"
-		}
-	]
-}

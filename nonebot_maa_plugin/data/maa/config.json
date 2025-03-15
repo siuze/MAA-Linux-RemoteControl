@@ -1,7 +1,0 @@
-{
-    "maa_task_wait": 0, 
-    "maa_schedule_enable": true, 
-    "maa_recall_enable": true, 
-    "recall_merge": true, 
-    "notice_group_id": "1234567890"
-}

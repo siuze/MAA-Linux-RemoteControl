@@ -23,6 +23,7 @@ class Message(Enum):
 	ConnectionInfo = 2  # 连接相关信息
 	AllTasksCompleted = 3  # 全部任务完成
 	AsyncCallInfo = 4  # 外部异步调用信息
+	Destroyed = 5
 
 	# /* TaskChain Info */
 	TaskChainError = 10000  # 任务链执行/识别错误

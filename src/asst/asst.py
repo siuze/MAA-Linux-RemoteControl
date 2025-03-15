@@ -3,7 +3,6 @@ import ctypes.util
 import json
 import os
 import pathlib
-import platform
 from typing import Union, Optional
 from .utils import InstanceOptionType, JSON
 
@@ -32,12 +31,8 @@ class Asst:
 
 		platform_values = {"windows": {"libpath": "MaaCore.dll", "environ_var": "PATH"}, "darwin": {"libpath": "libMaaCore.dylib", "environ_var": "DYLD_LIBRARY_PATH"}, "linux": {"libpath": "libMaaCore.so", "environ_var": "LD_LIBRARY_PATH"}}
 		lib_import_func = None
-
-		platform_type = platform.system().lower()
-		if platform_type == "windows":
-			lib_import_func = ctypes.WinDLL
-		else:
-			lib_import_func = ctypes.CDLL
+		platform_type = 'linux'
+		lib_import_func = ctypes.CDLL
 
 		Asst.__libpath = pathlib.Path(path) / platform_values[platform_type]["libpath"]
 		try:
