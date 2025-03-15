@@ -1,134 +1,124 @@
-import json
+from collections import deque
+import gc
+import multiprocessing
+import os
+import threading
 import time
-import traceback
 from pathlib import Path
-from threading import Thread
-
-from _global import global_var
-from cache import read_cache, save_cache
+from multiprocessing import Process
+from src.cache import 读取cache
 from loguru import logger as lg
-from ws import ws_client
+from src.ws import WS
+from src.sync_queue import SyncQueue
+from src.maa import MAA
+from multiprocessing import Semaphore
+from multiprocessing.synchronize import Semaphore as SemaphoreType
+from multiprocessing import Queue
+from multiprocessing.queues import Queue as QUEUE
+from src._global import Notice, TaskConfig
 
-from maa import MAA
-
-lg.add(str(Path(__file__).parent / f"logs/log_{time.strftime('%Y-%m-%d', time.localtime()) }.log"), rotation="1 day", retention="30 days")
+lg.add(str(Path(__file__).parent / f"logs/log_{time.strftime('%Y-%m-%d', time.localtime()) }.log"), rotation="1 day", retention="15 days")
 
 
-def handle_interrupt_tasks_waiting_queue():
-	lg.info("启用中断任务配置队列轮询处理")
+def WS数据收发进程(信号量: SemaphoreType,
+				待执行的一般任务队列: QUEUE[TaskConfig],
+				待执行的中断任务队列: QUEUE[TaskConfig],
+				待发送的消息队列: QUEUE[Notice],):
+	ws_app = WS(信号量,待执行的一般任务队列,待执行的中断任务队列,待发送的消息队列,)
+	ws_app.run()
+
+def MAA执行进程(信号量: SemaphoreType,
+				待执行的一般任务队列: QUEUE[TaskConfig],
+				待执行的中断任务队列: QUEUE[TaskConfig],
+				待发送的消息队列: QUEUE[Notice],):
+	lock = threading.Lock()
+	MAA待执行的一般任务队列: deque[TaskConfig] = deque()
+	MAA待执行的中断任务队列: deque[TaskConfig] = deque()
+	读取cache(MAA待执行的一般任务队列,MAA待执行的中断任务队列)
+	sync_queue = SyncQueue(信号量,待执行的一般任务队列,待执行的中断任务队列,MAA待执行的一般任务队列,MAA待执行的中断任务队列)
+	maa = MAA()
+
+	def 处理一般任务():
+		while True:
+			if len(MAA待执行的一般任务队列):
+				if not maa.inited:
+					lg.info("maa  执行初始化")
+					lock.acquire()
+					maa.init(MAA待执行的一般任务队列,MAA待执行的中断任务队列,待发送的消息队列)
+					lock.release()
+				config = MAA待执行的一般任务队列.popleft()
+				lg.info("准备传入一个一般任务配置")
+				maa.执行一般任务配置(config)
+				gc.collect()
+			time.sleep(1)
+	def 处理中断任务():
+		while True:
+			if len(MAA待执行的中断任务队列):
+				if not maa.inited:
+					lg.info("maa执行初始化")
+					lock.acquire()
+					maa.init(MAA待执行的一般任务队列,MAA待执行的中断任务队列,待发送的消息队列)
+					lock.release()
+				config = MAA待执行的中断任务队列.popleft()
+				lg.info("准备传入一个中断任务配置")
+				maa.执行中断任务配置(config)
+				gc.collect()
+			time.sleep(1)
+	t1 = threading.Thread(target=sync_queue.run)
+	t2 = threading.Thread(target=处理一般任务)
+	t3 = threading.Thread(target=处理中断任务)
+	t1.start()
+	t2.start()
+	t3.start()
+	空闲时间 = 0
 	while True:
-		if global_var.get("exit_all"):
-			exit()
-		try:
-			time.sleep(2)
-			if not global_var.get("interrupt_tasks_waiting_queue").empty():
-				if global_var.get("my_maa") is None:
-					lg.info("激活MAA")
-					global_var.set("my_maa", MAA())
-					global_var.get("my_maa").connect(init=True)
-				lg.info("还有尚未完成的中断任务配置，将队列中的第一个提交到处理函数中")
-				global_var.get("my_maa").interrupt_tasks_handler(data=global_var.get("interrupt_tasks_waiting_queue").queue[0]["data"])
-				lg.info("该中断任务配置处理完成，将其清理出队列")
-				global_var.set("accomplish_config_num", global_var.get("accomplish_config_num") + 1)
-				global_var.get("interrupt_tasks_waiting_queue").get()
-				save_cache()
-				lg.info(f"中断任务配置队列中剩余{global_var.get('interrupt_tasks_waiting_queue').qsize()}个任务配置")
-		except KeyboardInterrupt:
-			lg.error("检测到KeyboardInterrupt，退出WS待发送消息队列线程")
-			exit()
-		except Exception:
-			lg.error(traceback.format_exc())
+		time.sleep(30)
+		if (maa.inited
+			and len(MAA待执行的一般任务队列) == 0
+			and len(MAA待执行的中断任务队列) == 0
+			and not maa.maa.running()
+			):
+			空闲时间+= 30
+			lg.info(f"{空闲时间=}")
+		else:
+			空闲时间 = 0
+		if 空闲时间 > 600:
+			lg.info("长时间没有任务，退出子进程以清理内存")
+			os._exit(0)
+
+	t1.join()
+	t2.join()
+	t3.join()
 
 
-def handle_tasks_config_waiting_queue():
-	lg.info("启用一般任务配置队列轮询处理")
-	sleep_state = True
+	
+
+
+if __name__ == '__main__':
+	multiprocessing.set_start_method('spawn')
+	信号量 = Semaphore(0)
+	待执行的一般任务队列: QUEUE[TaskConfig] = Queue()
+	待执行的中断任务队列: QUEUE[TaskConfig] = Queue()
+	待发送的消息队列: QUEUE[Notice] = Queue()
+	p1 = Process(target=WS数据收发进程, args=(信号量,待执行的一般任务队列,待执行的中断任务队列,待发送的消息队列),daemon=False)
+	p2 = Process(target=MAA执行进程, args=(信号量,待执行的一般任务队列,待执行的中断任务队列,待发送的消息队列),daemon=False)
+	p1.start()
+	p2.start()
 	while True:
-		if global_var.get("exit_all"):
-			exit()
-		try:
-			time.sleep(5)
-			if not global_var.get("tasks_config_waiting_queue").empty():
-				if sleep_state or global_var.get("my_maa") is None:
-					lg.info("激活MAA")
-					global_var.set("my_maa", MAA())
-					global_var.get("my_maa").connect(init=True)
-					sleep_state = False
-				lg.info("还有尚未完成的一般任务配置，将队列中的第一个提交到处理函数中")
-				global_var.get("my_maa").tasks_handler(data=global_var.get("tasks_config_waiting_queue").queue[0]["data"])
-				lg.info("该一般任务配置处理完成，将其清理出队列")
-				global_var.set("accomplish_config_num", global_var.get("accomplish_config_num") + 1)
-				global_var.get("tasks_config_waiting_queue").get()
-				if global_var.get("clean_all_config_tag") is True:
-					lg.info("收到指令，清空所有配置")
-					with global_var.get("tasks_config_waiting_queue").mutex:
-						global_var.get("tasks_config_waiting_queue").queue.clear()
-					global_var.set("clean_all_config_tag", False)
-				save_cache()
-				lg.info(f"一般任务配置队列中剩余{global_var.get('tasks_config_waiting_queue').qsize()}个任务配置")
-				time.sleep(120) # 休息两分钟
-			else:
-				if not sleep_state and global_var.get("interrupt_tasks_waiting_queue").empty():
-					lg.info("任务配置队列已全部处理完（含中断任务）")
-					lg.info("清理内存，删除MAA实例，进入休眠模式")
-					global_var._del("my_maa")
-					sleep_state = True
-					global_var.set("my_maa", None)
-
-					if global_var.get("accomplish_config_num") > 0:
-						time.sleep(5)
-						if global_var.get("tasks_config_waiting_queue").empty() and global_var.get("interrupt_tasks_waiting_queue").empty():
-							lg.info("暂时通过退出进程以规避内存泄露问题")
-							# save_cache()
-							global_var.exit_all()
-							exit()
-		except KeyboardInterrupt:
-			lg.error("检测到KeyboardInterrupt，退出一般任务配置队列轮询线程")
-			exit()
-
-		except Exception:
-			lg.error(traceback.format_exc())
-
-
-def handle_send_msg_waiting_queue():
-	lg.info("启用消息队列轮询发送")
-	while True:
-		if global_var.get("exit_all"):
+		if not p1.is_alive():
+			lg.info("WS数据收发进程 退出，准备重启")
 			try:
-				global_var.get("wsapp").close()
+				p1.close()
 			except Exception as e:
-				lg.error(str(e))
-			exit()
-		try:
-			if not global_var.get("send_msg_waiting_queue").empty():
-				global_var.get("wsapp").send(json.dumps(global_var.get("send_msg_waiting_queue").queue[0], ensure_ascii=False))
-				global_var.get("send_msg_waiting_queue").get()
-				save_cache()
-		except KeyboardInterrupt:
-			lg.error("检测到KeyboardInterrupt，退出WS待发送消息队列线程")
-			exit()
-		except Exception:
-			lg.error(traceback.format_exc())
-		finally:
-			time.sleep(1)  # 需要sleep一下减少CPU占用
-
-
-read_cache()
-# 创建 Thread 实例
-WS客户端线程 = Thread(target=ws_client, args=())
-WS待发送消息队列 = Thread(target=handle_send_msg_waiting_queue, args=())
-
-MAA任务配置处理队列 = Thread(target=handle_tasks_config_waiting_queue, args=())
-MAA中断任务配置处理队列 = Thread(target=handle_interrupt_tasks_waiting_queue, args=())
-
-# 启动线程运行
-WS客户端线程.start()
-WS待发送消息队列.start()
-MAA任务配置处理队列.start()
-MAA中断任务配置处理队列.start()
-
-
-WS客户端线程.join()
-WS待发送消息队列.join()
-MAA任务配置处理队列.join()
-MAA中断任务配置处理队列.join()
+				lg.error(f"WS数据收发进程 清理失败 {e!r}")
+			p1 = Process(target=WS数据收发进程, args=(信号量,待执行的一般任务队列,待执行的中断任务队列,待发送的消息队列),daemon=False)
+			p1.start()
+		if not p2.is_alive():
+			lg.info("MAA执行进程 退出，准备重启")
+			try:
+				p2.close()
+			except Exception as e:
+				lg.error(f"MAA执行进程 清理失败 {e!r}")
+			p2 = Process(target=MAA执行进程, args=(信号量,待执行的一般任务队列,待执行的中断任务队列,待发送的消息队列),daemon=False)
+			p2.start()
+		time.sleep(1)
