@@ -10,4 +10,4 @@ run.sh
 # log 不需要提交的任意包含后缀名为log的文件
 *.png
 *.log
-
+cache.json
