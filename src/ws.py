@@ -32,12 +32,21 @@ class WS:
 		def check_and_send_message():
 			try:
 				while True:
-					msg = json.dumps(self.待发送的消息队列.get()).decode()
-					lg.info(f"准备发送消息 {msg[:500]}")
-					wsapp.send(msg)
-					gc.collect()
+					msg_raw = self.待发送的消息队列.get()
+					try:
+						msg = json.dumps(msg_raw).decode()
+						lg.info(f"准备发送消息 {msg[:500]}")
+						wsapp.send(msg)
+						gc.collect()
+					except Exception as e:
+						lg.error(f"{e!r} 消息发送模块出现异常，退出线程")
+						self.待发送的消息队列.put(msg_raw)
+						time.sleep(5)
+						return
 			except Exception as e:
-				lg.error(f"{e!r} 消息发送模块出现异常，退出")
+				lg.error(f"{e!r} 消息发送模块出现异常，退出线程")
+				# time.sleep(5)
+				return
 
 		threading.Thread(target=check_and_send_message).start()
 
