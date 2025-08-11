@@ -227,6 +227,7 @@ class MAA:
 		self.运行日志['fight']["stages"] = {}
 		self.运行日志['fight']['drops'] = {}
 		self.运行日志['fight']['other_msg'] = ''
+		self.运行日志['fight']['sanity'] = ''
 		self.运行日志['fight']['stages_drops_msg'] = ''
 		self.运行日志['important'] = ''
 		self.运行日志['infrast'] = ''
@@ -301,22 +302,30 @@ class MAA:
 
 		if self.运行配置["python"]["auto_update"] or force:
 			lg.info(f"开始更新 {self.MAA内核路径=}")
-			已实际更新, 已实际OTA, 更新日志 = Updater(maa_内核路径=self.MAA内核路径, maa版本类型=Version.Beta, http代理=proxies).update()
-			status = "OK"  # 默认已是最新无需更新
-			if 已实际更新 or 已实际OTA:
-				status = "SUCCESS"  # 已进行更新操作
-			recall: Notice = {
-				"status": status,
-				"payload": 更新日志.rstrip(),
-				"type": "update_log",
-			}
-			self.待发送的消息队列.put(recall)
-			lg.info("更新结束")
-			if status == 'SUCCESS':
-				lg.info("核心文件版本已有变化，5s后退出当前Python MAA子进程，等待守护主进程重新发起子进程")
-				self.导出cache()
-				time.sleep(5)
-				os._exit(0)
+			try:
+				已实际更新, 已实际OTA, 更新日志 = Updater(maa_内核路径=self.MAA内核路径, maa版本类型=Version.Beta, http代理=proxies).update()
+				status = "OK"  # 默认已是最新无需更新
+				if 已实际更新 or 已实际OTA:
+					status = "SUCCESS"  # 已进行更新操作
+				recall: Notice = {
+					"status": status,
+					"payload": 更新日志.rstrip(),
+					"type": "update_log",
+				}
+				self.待发送的消息队列.put(recall)
+				lg.info("更新结束")
+				if status == 'SUCCESS':
+					lg.info("核心文件版本已有变化，5s后退出当前Python MAA子进程，等待守护主进程重新发起子进程")
+					self.导出cache()
+					time.sleep(5)
+					os._exit(0)
+			except Exception as e:
+				lg.exception("版本更新时发生异常")
+				recall: Notice = {
+					"status": "FAILED",
+					"payload": f"进行版本更新时发生异常 {e!r}",
+					"type": "update_log",
+				}
 		else:
 			lg.info("未开启自动更新")
 
@@ -342,7 +351,7 @@ class MAA:
 		"""
 		self.检查退出信号()
 		custom_tasks_path = Path(__file__).parent.parent / "data/patch/tasks.json"
-		official_tasks_path = self.MAA内核路径 / "resource/tasks.json"
+		official_tasks_path = self.MAA内核路径 / "resource/tasks/tasks.json"
 		if os.path.exists(custom_tasks_path) and os.path.exists(official_tasks_path):
 			with open(custom_tasks_path, "r", encoding="utf8") as file:
 				customs_tasks = json.load(file)  # 读取自定义任务动作
@@ -527,9 +536,15 @@ class MAA:
 		self.检查退出信号()
 		stage = detail["stage"]["stageCode"]
 		if stage not in self.运行日志["fight"]["stages"]:
-			self.运行日志["fight"]["stages"][stage] = 1
+			if 'cur_times' in detail:
+				self.运行日志["fight"]["stages"][stage] = detail['cur_times']
+			else:
+				self.运行日志["fight"]["stages"][stage] = 1
 		else:
-			self.运行日志["fight"]["stages"][stage] += 1
+			if 'cur_times' in detail:
+				self.运行日志["fight"]["stages"][stage] += detail['cur_times']
+			else:
+				self.运行日志["fight"]["stages"][stage] += 1
 		for drop in detail["stats"]:
 			self.运行日志["fight"]["drops"][drop["itemName"]] = drop["quantity"]
 

@@ -214,7 +214,18 @@ class Updater:
 			# 开始更新逻辑
 			# 解析version_detail的JSON信息
 			# 通过API获取下载地址列表和对应文件名
-			if time.mktime(time.strptime(最新版本创建时间, "%Y-%m-%dT%H:%M:%S%z")) <  self.当前版本创建时间戳 and 最新版本号[:6] == self.当前版本号[:6]:  # 通过比较二者是否一致判断是否需要更新
+			最新版本号切分 = 最新版本号.split('.')
+			当前版本号切分 = self.当前版本号.split('.')
+			if len(最新版本号切分) > 3:
+				最新版本号去尾巴 = 最新版本号切分[0] + 最新版本号切分[1] + 最新版本号切分[2]
+			else:
+				最新版本号去尾巴 = 最新版本号
+			if len(当前版本号切分) > 3:
+				当前版本号去尾巴 = 当前版本号切分[0] + 当前版本号切分[1] + 当前版本号切分[2]
+			else:
+				当前版本号去尾巴 = self.当前版本号
+
+			if time.mktime(time.strptime(最新版本创建时间, "%Y-%m-%dT%H:%M:%S%z")) <  self.当前版本创建时间戳 and 当前版本号去尾巴 == 最新版本号去尾巴:  # 通过比较二者是否一致判断是否需要更新
 				self.custom_print("版本号存在差异，但本地版本日期更新，可能是用户已手动升级，不进行更新", log=True)
 				# return 已执行更新, 已执行OTA, self.update_log
 			else:
