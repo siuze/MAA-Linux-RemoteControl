@@ -225,9 +225,15 @@ class Updater:
 			else:
 				当前版本号去尾巴 = self.当前版本号
 
-			if time.mktime(time.strptime(最新版本创建时间, "%Y-%m-%dT%H:%M:%S%z")) <  self.当前版本创建时间戳 and 当前版本号去尾巴 == 最新版本号去尾巴:  # 通过比较二者是否一致判断是否需要更新
+			if time.mktime(time.strptime(最新版本创建时间, "%Y-%m-%dT%H:%M:%S%z")) <  time.mktime(time.strptime(self.当前版本创建日期, "%Y-%m-%dT%H:%M:%S%z")) and 当前版本号去尾巴 == 最新版本号去尾巴:  # 通过比较二者是否一致判断是否需要更新
 				self.custom_print("版本号存在差异，但本地版本日期更新，可能是用户已手动升级，不进行更新", log=True)
 				# return 已执行更新, 已执行OTA, self.update_log
+			elif ((当前版本号切分[0] > 最新版本号切分[0])
+		 		or ((当前版本号切分[0] == 最新版本号切分[0]) and ((当前版本号切分[1] > 最新版本号切分[1])))
+		 		or ((当前版本号切分[0] == 最新版本号切分[0]) and (当前版本号切分[1] == 最新版本号切分[1]) and (当前版本号切分[2] > 最新版本号切分[2]))
+			):
+				self.custom_print("版本号存在差异，但本地版本编号更大，可能是用户已手动升级，不进行更新", log=True)
+				
 			else:
 				version_log = 版本更新变动日志.replace("\\n" * 2, "\n").replace("\\n", "\n")
 				self.custom_print(f"版本更新主要日志如下：\n{version_log}", log=True)
@@ -245,13 +251,13 @@ class Updater:
 				最大重试次数 = 10
 				for 重试次数 in range(最大重试次数):
 					try:
+						开始计时 = time.perf_counter()
 						self.custom_print("开始下载" + (f"，第{重试次数}次尝试" if 重试次数 > 1 else ""))
 						# 强制使用github_url，不从镜像源获取
 						self.download_file(github_url, 压缩包保存路径, self.http代理)
 						self.custom_print(f"新版本下载完成，压缩包大小约为{round((os.path.getsize(压缩包保存路径))/1024/1024,1)}MB", log=True)
 						# 解压下载的文件，
 						self.custom_print("开始解压数据", log=True)
-						开始计时 = time.perf_counter()
 						file_extension = os.path.splitext(filename)[1]
 						unzip = False
 						# 根据拓展名选择解压算法

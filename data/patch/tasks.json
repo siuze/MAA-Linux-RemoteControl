@@ -31,7 +31,9 @@
             "Sarkaz/Task.png", 
             "Delicious/Task.png", 
             "Gaming/Task.png", 
-            "DahuangCity/Task.png"
+            "DahuangCity/Task.png", 
+            "Dreamland/DreamlandDefault/Task.png", 
+            "Dreamland/DreamlandDark/Task.png"
 		],
         "maskRange": [1, 255],
 		"cache": false,

@@ -29,7 +29,7 @@ def 检查基建异常(img_path:str):
 	img = cv2.imread(img_path)
 	img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	max_val_max = 0
-	for img_name in ('日间','大荒','迷宫','彩六','银凇','视相',):
+	for img_name in ('日间','大荒','迷宫','彩六','银凇','视相','梦乡白天'):
 		template = cv2.imread(str(Path(__file__).parent.parent / f"data/template/{img_name}-基建感叹号.png"), 0)
 		res = cv2.matchTemplate(img[840:1020, 1485:1695], template, cv2.TM_CCOEFF_NORMED)
 		min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)

@@ -41,6 +41,7 @@ def MAA执行进程(信号量: SemaphoreType,
 	def 处理一般任务():
 		while True:
 			if len(MAA待执行的一般任务队列):
+				lg.info("准备执行一个一般任务配置")
 				if not maa.inited:
 					lg.info("maa  执行初始化")
 					lock.acquire()
