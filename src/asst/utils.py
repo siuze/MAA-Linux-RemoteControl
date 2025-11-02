@@ -39,6 +39,8 @@ class Message(Enum):
 	SubTaskExtraInfo = 20003  # 原子任务额外信息
 	SubTaskStopped = 20004  # 原子任务手动停止
 
+	ReportRequest     = 30000      # 上报请求
+
 
 @unique
 class Version(Enum):

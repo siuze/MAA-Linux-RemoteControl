@@ -259,7 +259,7 @@
                 "screenshot": "after", 
                 "params": {
                     "task_names": [
-                        "ReturnButton"
+                        "返回主界面"
                     ]
                 }
             }, 

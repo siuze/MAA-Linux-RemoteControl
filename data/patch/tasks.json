@@ -1,45 +1,64 @@
 {
+	
+	"返回主界面": {
+		"algorithm": "JustReturn",
+		"action": "DoNothing",
+		"subErrorIgnored": true,
+		"next": [
+			"Home@ReturnButtons#next",
+			"Home"
+		]
+	},
 	"进入日常任务": {
 		"algorithm": "JustReturn",
 		"action": "DoNothing",
 		"subErrorIgnored": true,
-		"sub": [
-			"进入任务"
-		],
 		"next": [
-			"日常任务"
+			"点击任务图标@ReturnButtons#next",
+			"点击任务图标"
 		]
 	},
 	"进入周常任务": {
 		"algorithm": "JustReturn",
 		"action": "DoNothing",
 		"subErrorIgnored": true,
-		"sub": [
-			"进入任务"
-		],
 		"next": [
 			"周常任务"
 		]
 	},
 	"点击任务图标": {
 		"template": [
-            "Default/Task.png", 
-            "Dark/Task.png", 
-            "Sami/Task.png", 
-            "MistCity/Task.png", 
-            "Siege/Task.png", 
-            "Sarkaz/Task.png", 
-            "Delicious/Task.png", 
-            "Gaming/Task.png", 
-            "DahuangCity/Task.png", 
-            "Dreamland/DreamlandDefault/Task.png", 
-            "Dreamland/DreamlandDark/Task.png"
+			"Default/Task.png",
+			"Dark/Task.png",
+			"Sami/Task.png",
+			"MistCity/Task.png",
+			"Siege/Task.png",
+			"Sarkaz/Task.png",
+			"Delicious/Task.png",
+			"Gaming/Task.png",
+			"DahuangCity/Task.png",
+			"Dreamland/DreamlandDefault/Task.png",
+			"Dreamland/DreamlandDark/Task.png",
+			"JieGarden/Task.png",
+			"AveMujica/Task.png",
+			"Together/Task.png"
 		],
-        "maskRange": [1, 255],
+		"next": [
+			"日常任务"
+		],
+		"maskRange": [
+			1,
+			255
+		],
 		"cache": false,
 		"templThreshold": 0.7,
 		"action": "ClickSelf",
-        "roi": [700, 530, 230, 190],
+		"roi": [
+			700,
+			530,
+			230,
+			190
+		],
 		"crop_doc": {
 			"roi": [
 				720,
@@ -50,16 +69,6 @@
 			"mask": []
 		}
 	},
-	"进入任务": {
-		"algorithm": "JustReturn",
-		"action": "DoNothing",
-		"subErrorIgnored": true,
-		"sub": [
-			"ReturnButtons",
-			"点击任务图标"
-		],
-		"next": []
-	},
 	"日常任务": {
 		"template": [
 			"DailyTask.png"
@@ -67,7 +76,7 @@
 		"action": "ClickSelf",
 		"cache": false,
 		"roi": [
-			400,
+			300,
 			0,
 			880,
 			100

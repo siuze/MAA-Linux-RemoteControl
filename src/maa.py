@@ -155,8 +155,8 @@ def my_callback(msg: int, details: bytes, arg: Any) -> None:
 				self.运行日志["infrast"] += "基建宿舍出现干员冲突，请检查\n"
 
 	if self.运行配置["python"]["debug"]:
-		lg.info(消息类型)
-		lg.info(json消息内容)
+		lg.debug(消息类型)
+		lg.debug(json消息内容)
 
 def format_time():
 	currentDateAndTime = datetime.datetime.now()
@@ -181,7 +181,8 @@ class MAA:
 		'退出信号',
 		'运行日志',
 		'maa',
-		'inited'
+		'inited',
+		'作战启动检查异常计数'
 		)
 	def init(self,待执行的一般配置队列: deque[TaskConfig],
 				待执行的中断配置队列: deque[TaskConfig],
@@ -215,6 +216,7 @@ class MAA:
 	def __init__(self,
 				) -> None:
 		self.inited = False
+		self.作战启动检查异常计数 = 0
 		pass
 
 
@@ -665,9 +667,9 @@ class MAA:
 		task_index = 0
 		while task_index < len(config["tasks"]):
 			self.检查退出信号()
-			lg.info(f"正在处理第{task_index}个中断任务")
+			lg.success(f"正在处理第{task_index}个中断任务")
 			task = config["tasks"][task_index]
-			lg.info(task)
+			lg.success(task)
 			task_index += 1
 			recall: Notice = {
 				'type': 'task_result',
@@ -777,10 +779,10 @@ class MAA:
 			self.检查退出信号()
 			self.任务执行结果 = ['正常']
 			begin_time = time.perf_counter()
-			lg.info(f"正在处理第{task_index}个任务")
+			lg.success(f"正在处理第{task_index}个任务")
 			task = config["tasks"][task_index]
 			self.正在处理的任务 = task
-			lg.info(task)
+			lg.success(task)
 			recall: Notice = {
 				'config': self.生成回调消息中的配置信息(config, task),
 				'duration':0,
@@ -892,6 +894,13 @@ class MAA:
 				if 'params' in task and "stage" in task["params"] and task["params"]["stage"][:2] in ["CE", "AP", "SK", "CA", "PR"]:
 					self.作战任务阻塞标记 = False
 					recall["payload"] += '可能是素材副本今日未开放，继续执行后续任务\n'
+				elif 'params' in task and "stage" in task["params"] and task["params"]["stage"] == 'Annihilation':
+					self.作战任务阻塞标记 = False
+					recall["payload"] += '作战启动检查异常，可能是剿灭已完成，继续执行后续任务\n'
+				elif self.作战启动检查异常计数 > 0:
+					lg.error("作战启动检查异常多次，放弃重试，继续执行后续任务")
+					recall["payload"] += '作战启动检查异常多次，放弃重试，继续执行后续任务"\n'
+					self.作战任务阻塞标记 = False
 				else:
 					lg.error("作战启动检查异常，先sleep五分钟等待作战结束再从头运行配置")
 					recall["payload"] += '作战启动检查异常，先sleep五分钟等待可能正在进行的作战结束，而后从头重新运行配置\n'
@@ -899,6 +908,7 @@ class MAA:
 					task_index = 0
 					self.maa.stop()
 					time.sleep(5 * 60)
+					self.作战启动检查异常计数 += 1
 					continue
 			elif "需要重连" in self.任务执行结果:
 				text = "任务运行过程出错，重新尝试使用adb连接到安卓设备"
@@ -923,7 +933,7 @@ class MAA:
 				self.待发送的消息队列.put(recall)
 				self.maa.stop()
 				continue
-			elif "任务链出错" in self.任务执行结果:
+			elif "任务链出错" in self.任务执行结果 and task['type'] not in ('Award'):
 				if retry < 2:
 					retry += 1
 					self.任务执行结果 = ["正常"]
