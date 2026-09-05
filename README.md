@@ -1,6 +1,8 @@
 # MAA-Linux-RemoteControl (MAA-LRC)
 
-MAA-LRC 是一个基于 Python 实现的、专为无图形界面 Linux 设备（如树莓派、Orange Pi、RK3588 等嵌入式开发板及各类无头云服务器）量身打造的 [MAA (MaaAssistantArknights)](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 远程调度控制系统。
+MAA-LRC 是一个基于 Python 实现的、为无图形界面 Linux 设备（如嵌入式开发板及各类无头云服务器）打造的 [MAA (MaaAssistantArknights)](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 远程调度控制系统。
+
+> 大家好，我让AI帮我重构了一下代码和文档，以期提供更好的性能和可维护性，但是现在代码尚未充分REVIEW，其中可能存在一些问题，还望大家海涵。
 
 - **WebSocket 双向长连接**：MAA-LRC 作为客户端主动连入控制中心（如 NoneBot2 机器人服务端），按队列自动接收并调度任务；
 - **全生命周期回调上报**：任务启停、状态、执行耗时、基建汇报、掉落统计与图像截图均实现结构化通知闭环；
@@ -119,6 +121,6 @@ python:
 ## 开发与贡献准则
 
 欢迎提交 Issue 和 Pull Request！为了保证项目的易维护性，请严格遵守以下开发规范：
-1. **缩进规范**：**必须使用制表符 (`Tab`) 进行代码缩进**，严禁使用空格缩进；
+1. **缩进规范**：**使用制表符 (`Tab`) 进行代码缩进**，不要使用空格缩进；
 2. **代码检查**：提交前请使用 `ruff check .` 进行代码校验，根目录下已预置对齐 Tab 缩进的 [pyproject.toml](./pyproject.toml)；
 3. **安全准则**：禁止在子模块中擅自调用 `os._exit(0)`，必须确保 `Asst` 实例能够通过 `destroy()` 正常析构并被操作系统回收。
