@@ -66,5 +66,6 @@ example/
 
 ### 2. 标准日常流程任务（`type: "normal"`）
 参考 [tasks_example.json](tasks_example/tasks_example.json)：
-- 包含 `CloseDown`（清理重启）、`StartUp`（登录唤醒）、`Infrast`（基建换班与收获）、`Fight`（作战及特定星期刷材料判断）、`Recruit`（公开招募）、`Mall`（信用商店购买）等完整链条；
-- 包含 `condition` 条件过滤器（`weekday`、`hour`）与 `block: "executed"` 依赖阻断用法。
+- 包含 `condition` 条件过滤器（`weekday`、`hour`）与 `block: "executed"` 依赖阻断用法；
+- 包含配置优先级 `priority` 参数（注意：作用于整份任务配置，而非单个子任务）：目前仅区分负数与非负数，暂不按数值大小排序。默认为 `0`（正常主要配置）；负数（如 `-1`）代表**次要配置**，当待执行队列中出现任何非负数优先级的正常配置时，当前次要配置会自动中止让位。
+

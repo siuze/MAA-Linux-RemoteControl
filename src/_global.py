@@ -121,7 +121,7 @@ class TaskConfig(TypedDict):
 	id: str
 	type: Literal["normal", "interrupt"]
 	tasks: list[Task]
-	priority: int
+	priority: NotRequired[int]  # 配置优先级，默认为 0；< 0 代表次要任务，当队列存在非负数优先级任务时会被中止让位
 
 
 class Notice(TypedDict):
