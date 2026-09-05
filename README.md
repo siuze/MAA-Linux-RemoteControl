@@ -1,90 +1,123 @@
-# MAA-Linux-RemoteControl
-就简称MAA-LRC吧
+# MAA-Linux-RemoteControl (MAA-LRC)
 
-## MAA-LRC使用Python实现无图形界面设备下远程控制[MAA](https://github.com/MaaAssistantArknights/MaaAssistantArknights)，运行明日方舟助手
- - 利用Websocket协议通信，MAA-LRC作为客户端连接到远程控制的服务端，对服务端下发的任务配置进行队列处理
- - 对每个子任务的运行结果进行回调报告，可以加入截图一并汇报
+MAA-LRC 是一个基于 Python 实现的、专为无图形界面 Linux 设备（如树莓派、Orange Pi、RK3588 等嵌入式开发板及各类无头云服务器）量身打造的 [MAA (MaaAssistantArknights)](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 远程调度控制系统。
 
-## 目前已实现
- - [x] 空闲超过10分钟以上时，释放相关内存资源进入休眠（通过重启子进程来实现）   
- - [x] 执行任务前自动更新MAA版本和OTA资源   
- - [x] 支持Android 11+设备的无线调试连接（端口扫描和自动重连）   
- - [x] 运行MAA的常规任务（启动、关闭、作战、公招、基建、领取奖励和自定义任务）  
- - [x] 作战结果与掉落物品日志记录  
- - [x] 获取任务运行前/后截图  
- - [x] 获取基建入驻总览的截图  
- - [x] 获取基建副手简报的截图  
- - [x] 获取日常周常奖励页面截图  
- - [x] 获取公招界面的截图  
- - [x] 发送截图和日志到服务端进行汇报  
- - [x] 任务运行时立即获取实时截图  
- - [x] 任务运行时立即中断运行  
- - [x] 自动检查是否存在签到活动尚未领取的情况（只在中午12点后执行任务时检查）  
- - [x] 自动检查是否存在赠送单抽机会尚未使用的情况  
- - [x] 自动检查基建是否存在异常情况（红色三角警告标志）（只是检查，不是自动处理）  
+- **WebSocket 双向长连接**：MAA-LRC 作为客户端主动连入控制中心（如 NoneBot2 机器人服务端），按队列自动接收并调度任务；
+- **全生命周期回调上报**：任务启停、状态、执行耗时、基建汇报、掉落统计与图像截图均实现结构化通知闭环；
+- **工业级防僵尸与资源自愈**：彻底解决多进程下 `defunct` 僵尸进程与脱壳孤儿进程问题；空闲 10 分钟优雅析构休眠并由系统 100% 回收 C++ / Python 物理内存。
 
+---
 
+## 核心特性
 
+- [x] **空闲优雅休眠**：连续 10 分钟无未完成任务时，自动析构 `Asst` 实例并退出子进程释放全部内存，有新任务时自动拉起
+- [x] **自动更新内核与资源**：启动前自动检测上游 Release 并静默拉取 aarch64 / x86_64 预编译包与 OTA 资源
+- [x] **无线调试端口动态感知**：支持 Android 11+ 无线调试，连接断开或手机重启后自动通过 `nmap` 扫描局域网动态端口并重连
+- [x] **全功能常规任务**：支持启动、关闭、自动作战（理智药/掉落汇报/企鹅物流）、公开招募、基建换班、信用商店、领取奖励与自定义任务
+- [x] **紧急中断与即时任务**：支持下发高优先级任务（如“立即截图”、“紧急停止当前配置”、“强制终止”）且不阻塞主队列
+- [x] **图像检测与基建预警**：支持自动获取任务前/后截图、长图拼接上报、自动检测限时活动签到/单抽遗漏、以及基建红色感叹号异常预警
 
-## 运行效果（使用Nonebot构建的QQ机器人下对MAA-LRC推送的回调消息进行通知）
-激活MAA时自动更新  
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/e6f2adbd-c3d5-44de-844e-e5aa36ae70c0)
+---
 
- 
-启动游戏  
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/137c56c6-c3cd-47a8-8017-1189162501cc)
-  
-作战总结  
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/05a246d8-2e5b-4560-9404-f0403ada1f12)
-  
-基建排班  
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/99689c39-4eb0-4c81-9033-b24b3c675100)
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/a46ad2a0-d7c5-4c9d-9d6f-4a47b2573f73)
-  
-基建简报   
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/2b0838c0-98f0-495e-8aeb-6d325a6fdc7d)
+## 运行效果展示（基于 NoneBot2 机器人回调通知）
 
-信用商店  
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/7095b36f-7b7b-4b55-801c-4756eccad7bc)
+| 自动检测升级与 OTA | 游戏启动与登录 | 作战结算与理智统计 |
+| :---: | :---: | :---: |
+| ![自动更新](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/e6f2adbd-c3d5-44de-844e-e5aa36ae70c0) | ![启动游戏](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/137c56c6-c3cd-47a8-8017-1189162501cc) | ![作战总结](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/05a246d8-2e5b-4560-9404-f0403ada1f12) |
 
-公开招募  
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/ae16d811-26fb-4dca-ba1c-e0ae4704614d)
-![%7BAAF74C4D-043F-4c1b-9266-5E13139B571C%7D](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/a75b0408-30c7-4138-ab70-bb7019bc0f1d)
+| 基建入驻与心情排班 | 公开招募计算 | 信用商店购买 |
+| :---: | :---: | :---: |
+| ![基建排班](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/99689c39-4eb0-4c81-9033-b24b3c675100) | ![公开招募](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/ae16d811-26fb-4dca-ba1c-e0ae4704614d) | ![信用商店](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/7095b36f-7b7b-4b55-801c-4756eccad7bc) |
 
+---
 
+## 快速使用指引
 
-任务奖励    
-![image](https://github.com/siuze/MAA-Linux-RemoteControl/assets/54578647/9a1b2688-addf-4db0-987c-981decfb33a3)
+> [!IMPORTANT]
+> **操作系统版本强约束说明**：  
+> **强烈要求不要使用太旧的 Linux 系统，发行版最低不能低于 Ubuntu 24.04 LTS**（或配备相同现代高版本 glibc 的 64 位 Linux）。  
+> **原因**：MAA 官方 C++ 核心库（`libMaaCore.so`）及 AI OCR 推理引擎在官方流水线编译构建时链接了较高版本的系统 **glibc**。若在老旧系统（如 Ubuntu 20.04/22.04）上运行，将直接抛出 `version 'GLIBC_x.xx' not found` 致命动态链接错误；且**无法保证 MAA 上游后续版本更新时会不会需要更高版本的 glibc**。
 
-
-
-## 使用方法
- 1. 下载MAA官方的[linux发布版本](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases)，解压后放在某某路径（第一次执行的时候需要手动下载，之后就不用了）；  
- 2. 下载本项目源码；  
- 3. 修改源码根目录下的 [config.yaml](./config.yaml) 以适应自己的情况；  
- 4. 安装好Python环境，目前项目仅在python3.13下实际运行测试过，不完全保证其他版本的兼容性；  
- 5. 参考 [requirement.txt](./requirements.txt) 安装Python的第三方库；  
- 6. 在源码的根目录下执行  
-
-```shell
-   python __init__.py
+### 1. 系统依赖安装
+```bash
+sudo apt update
+sudo apt install -y adb nmap git tmux curl libatomic1 libgomp1
 ```
 
-> 不想自己研究的话也可以加入我的MAA代挂托管群（275264699），一个月4块(๑╹◡╹)ﾉ"""
+### 2. Python 运行环境搭建
+推荐使用 `micromamba`、`conda` 或 `venv`（Python 版本建议 3.10 ~ 3.13）：
+```bash
+# 激活或创建虚拟环境（以 micromamba 为例）
+micromamba activate maa
 
-## 交互协议说明
-见[本项目wiki](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/交互协议说明)
-## 任务配置说明
-见[本项目wiki](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/任务配置说明)
-## 通知消息说明
-见[本项目wiki](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/通知消息说明)
-## 运行过程说明
-见[本项目wiki](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/运行过程说明)
-## 常见问题与重要提醒
-见[本项目wiki](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/常见问题与重要提醒)
+# 安装依赖
+pip install -r requirements.txt
+```
+*(注：项目预置了 `opencv-python-headless`，切勿在无图形界面开发板上安装带 GUI 依赖的普通 opencv)*
 
-## 另外的
-  
-我的代码水平很差，欢迎各种issue和pr。  
-唯有一点：请使用tab进行代码缩进，如非必要，不使用空格实现缩进。  
-建议使用ruff进行代码格式化   
+### 3. 配置修改
+复制或修改根目录下的 [config.yaml](./config.yaml)：
+```yaml
+connection:
+  adb: adb                 # ADB 命令路径
+  config: CompatPOSIXShell # Android 设备 Shell 模式
+  ip: 192.168.31.200       # 目标安卓设备 IP
+  port: 5555               # ADB 端口号
+  scan_port: false         # Android 11+ 无线调试端口变动时设为 true
+
+instance_options:
+  touch_mode: maatouch     # 强烈推荐 maatouch 原生触控
+
+python:
+  debug: true              # 开启详尽轨迹日志
+  auto_update: true        # 开启 MAA 内核与资源全自动更新（自动匹配 aarch64/x86_64）
+  ws: ws://192.168.31.100:8068/maa # 服务端 WebSocket 地址
+```
+
+### 4. 运行与生产常驻（推荐：tmux + run.sh）
+- **前台调试验证**：
+  ```bash
+  python __init__.py
+  ```
+- **生产无人值守守护（作者本人的实战方案）**：
+  ```bash
+  chmod +x run.sh
+  ./run.sh
+  ```
+  > 守护脚本会自动循环检测并在名为 `maa` 的 tmux 会话中拉起主程序。  
+  > 随时通过 `tmux a -t maa` 查看实时彩色行为日志；按快捷键 `Ctrl + B` 然后按 `D` 安全挂起断开。
+
+---
+
+## ⚠️ 关于任务配置与 MAA 官方参数的重要提示
+
+> [!WARNING]
+> **官方任务参数时效性声明**：  
+> 1. MAA 官方任务的执行参数（`params`）会紧随 MAA 上游版本的演进、游戏内新机制（新活动模式、保全派驻、生息演算等）的引入而频繁变动；  
+> 2. **本仓库 Wiki 中的参数说明与配置示例可能存在更新滞后或过时的情况**；  
+> 3. 若您在下发任务时遇到参数无效、报错或需要配置最新关卡，请以：
+>    - [MAA 官方集成文档 (3.1-集成文档.md)](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/master/docs/3.1-%E9%9B%86%E6%88%90%E6%96%87%E6%A1%A3.md)
+>    - 本地 MAA 核心目录中 `resource/tasks/tasks.json`（或 `cache/resource/tasks.json`）  
+>    给出的最新官方 Schema 定义为准！
+
+---
+
+## 官方 Wiki 文档中心
+
+详细的技术实现原理、交互协议报文与进阶配置指南，请查阅 [本项目官方 Wiki](https://github.com/siuze/MAA-Linux-RemoteControl/wiki)：
+
+- 🚀 **[快速开始与部署指南](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/快速开始与部署指南)**：以 aarch64 开发板为基准的系统依赖、环境搭建与排查指引
+- 📡 **[交互协议说明](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/交互协议说明)**：WebSocket 双向协议规范、回执闭环与重连时序
+- 📋 **[任务配置说明](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/任务配置说明)**：官方/自定义任务字段字典、时段与条件表达式用法
+- 🔔 **[通知消息说明](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/通知消息说明)**：6 种主动推送通知结构与标准状态码定义
+- ⚙️ **[运行过程说明](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/运行过程说明)**：双隔离子进程架构模型、优雅休眠与防僵尸治理
+- 💡 **[常见问题与重要提醒](https://github.com/siuze/MAA-Linux-RemoteControl/wiki/常见问题与重要提醒)**：自动更新原理、无线调试端口扫描与 tmux 实战
+
+---
+
+## 开发与贡献准则
+
+欢迎提交 Issue 和 Pull Request！为了保证项目的易维护性，请严格遵守以下开发规范：
+1. **缩进规范**：**必须使用制表符 (`Tab`) 进行代码缩进**，严禁使用空格缩进；
+2. **代码检查**：提交前请使用 `ruff check .` 进行代码校验，根目录下已预置对齐 Tab 缩进的 [pyproject.toml](./pyproject.toml)；
+3. **安全准则**：禁止在子模块中擅自调用 `os._exit(0)`，必须确保 `Asst` 实例能够通过 `destroy()` 正常析构并被操作系统回收。
