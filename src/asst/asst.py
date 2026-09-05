@@ -47,7 +47,7 @@ class Asst:
 		# 这里设置了也没啥用，只能暂时加到bashrc里面了
 		Asst.__libpath = pathlib.Path(path) / platform_values[platform_type]["libpath"]
 		try:
-			print(f"现有环境变量：{os.environ[platform_values[platform_type]["environ_var"]]}")
+			print(f"现有环境变量：{os.environ[platform_values[platform_type]['environ_var']]}")
 			print(f"{os.pathsep=}")
 			now_path = os.environ[platform_values[platform_type]["environ_var"]]
 			if now_path[-1:] == os.pathsep:

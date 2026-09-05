@@ -1,7 +1,4 @@
 import json5 as json
-import multiprocessing
-from multiprocessing.queues import Queue as QUEUE
-
 import os
 import platform
 import re
@@ -15,16 +12,14 @@ import requests
 from loguru import logger as lg
 # from requests.packages.urllib3.exceptions import InsecureRequestWarning  # 消除https未验证警告
 
-from .asst import Asst
 from .utils import Version
 
 # tar -xzvf MAA-06c9c98-linux-x86_64.tar.gz
 # requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-# 使用子进程获取当前版本后关闭，避免占用共享库。不这么做的话更新替换掉共享库文件后在退出程序会报段错误
-def _get_cur_version(path: str, result:QUEUE[str]):
-	Asst.load(path=path)
-	result.put(Asst.get_version())
+
+import subprocess
+import sys
 
 class Updater:
 	# API的地址
@@ -49,15 +44,33 @@ class Updater:
 			self.update_log += msg + "\n"
 
 	@staticmethod
-	def get_cur_version(path: Path):
+	def get_cur_version(path: Path) -> str:
 		"""
-		从MaaCore.dll获取当前版本号
+		从 libMaaCore 获取当前版本号。
+		使用独立轻量子进程运行，完全避免共享库常驻主进程引起段错误，
+		同时杜绝 multiprocessing.Queue 资源泄露和死锁。
 		"""
-		result: QUEUE[str] = multiprocessing.Queue()
-		p = multiprocessing.Process(target=_get_cur_version, args=(path, result))
-		p.start()
-		p.join()
-		return result.get()
+		script = (
+			"import sys; "
+			"from src.asst.asst import Asst; "
+			"loaded = Asst.load(sys.argv[1]); "
+			"print(Asst.get_version() if loaded else '')"
+		)
+		try:
+			res = subprocess.run(
+				[sys.executable, "-c", script, str(path)],
+				capture_output=True,
+				text=True,
+				timeout=10,
+				check=False,
+			)
+			if res.returncode == 0 and res.stdout.strip():
+				lines = res.stdout.strip().splitlines()
+				return lines[-1].strip()
+			lg.warning(f"子进程获取 MAA 版本返回异常 (code={res.returncode}): {res.stderr.strip()}")
+		except Exception as e:
+			lg.exception(f"获取 MAA 版本发生异常: {e!r}")
+		return "v0.0.0"
 
 	def __init__(self,
 				maa_内核路径: Path,

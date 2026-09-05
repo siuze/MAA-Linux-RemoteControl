@@ -14,7 +14,7 @@ from src._global import Notice, TaskConfig
 
 
 class WS:
-	
+
 	def __init__(self,
 				信号量: Semaphore,
 				待执行的一般任务队列: QUEUE[TaskConfig],
@@ -69,7 +69,7 @@ class WS:
 			self.待发送的消息队列.put(
 				{"type": "receipt",
 				"status": "SUCCESS",
-				"payload": f"MAA已收到一条 {config["type"]} 任务配置：【{config['id']}】，加入队列等待运行",})
+				"payload": f"MAA已收到一条 {config['type']} 任务配置：【{config['id']}】，加入队列等待运行",})
 			self.信号量.release()
 		except Exception as e:
 			lg.error(f"处理消息时出错 {e!r}")
