@@ -5,6 +5,7 @@
 **/.*_cache
 /tmp
 /data/img/*.png
+/debug
 # file 不需要提交的文件
 run.sh
 

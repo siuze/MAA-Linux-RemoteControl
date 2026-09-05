@@ -1,7 +1,7 @@
 import base64
 from collections import deque
 import datetime
-import json
+import json5 as json
 import os
 import signal
 import subprocess
@@ -49,7 +49,7 @@ def my_callback(msg: int, details: bytes, arg: Any) -> None:
 	self = MAA()
 	if 消息类型 in (Message.InternalError, Message.SubTaskError, Message.TaskChainError):
 		lg.error(f"MAA出错：{str(消息类型)} {json消息内容}")
-	if 消息类型 == Message.TaskChainError and json消息内容['taskchain'] not in ('Custom',):
+	if 消息类型 == Message.TaskChainError and json消息内容['taskchain'] not in ('Custom', 'Roguelike'):
 		self.任务执行结果.append("任务链出错")
 		self.maa.stop()
 	elif 消息类型 == Message.SubTaskError:
@@ -362,10 +362,11 @@ class MAA:
 			for key, values in customs_tasks.items():
 				official_tasks[key] = values  ##自定义任务动作覆盖到官方配置并保存
 			with open(official_tasks_path, "w", encoding="utf8") as file:
-				file.write(json.dumps(official_tasks, ensure_ascii=False, indent=4, separators=(", ", ": ")))
+				file.write(json.dumps(official_tasks, ensure_ascii=False, indent=4, quote_keys=True, separators=(", ", ": ")))
 
 		custom_template_path = Path(__file__).parent.parent / "data/patch/template"
-		official_template_path = self.MAA内核路径 / "resource/template"
+		# /home/ubuntu/siuze/prj/maa/MAA-linux/resource/template/WakeUp/AccountManager/AccountManagerOfficial.png
+		official_template_path = self.MAA内核路径 / "resource/template/WakeUp/AccountManager"
 		if os.path.exists(custom_template_path) and os.path.exists(official_template_path):
 			custom_template = os.listdir(custom_template_path)
 			for template in custom_template:
@@ -385,7 +386,7 @@ class MAA:
 			for key, values in customs_tasks.items():
 				official_tasks[key] = values  ##自定义任务动作覆盖到官方配置并保存
 			with open(official_ota_tasks_path, "w", encoding="utf8") as file:
-				file.write(json.dumps(official_tasks, ensure_ascii=False, indent=4, separators=(", ", ": ")))
+				file.write(json.dumps(official_tasks, ensure_ascii=False, indent=4, quote_keys=True, separators=(", ", ": ")))
 
 	def clean_adb(self):
 		"""
@@ -854,6 +855,7 @@ class MAA:
 			while self.maa.running():
 				self.检查退出信号()
 				self.检查重要通知并发送(recall)
+				self.检查高优先级任务()
 				time.sleep(1)
 			lg.success("任务结束运行")
 			lg.info(f"检查结束标记：{self.任务执行结果}")
@@ -1046,7 +1048,8 @@ class MAA:
 		ret: TaskConfig = {
 			'id': config["id"],
 			'type': config["type"],
-			'tasks': [task.copy()] if task is not None else []
+			'tasks': [task.copy()] if task is not None else [],
+			'priority': config['priority'] if 'priority' in config else 0
 				}
 		for key, value in config.items():
 			if key not in ('id','type','tasks'):
@@ -1061,3 +1064,9 @@ class MAA:
 			tmp["status"] = 'OK'
 			self.待发送的消息队列.put(tmp)
 			self.运行日志['important'] = ''
+	
+	def 检查高优先级任务(self):
+		if self.正在处理的配置["priority"] < 0:
+			if len(self.待执行的一般配置队列) > 0:
+				lg.info("检测到有更高优先级的任务等待运行，准备将当前任务停止")
+				self.maa.stop()

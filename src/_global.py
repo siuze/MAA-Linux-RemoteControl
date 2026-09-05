@@ -41,6 +41,7 @@ class TaskConfig(TypedDict):
 	id: str
 	type: Literal['normal', 'interrupt']
 	tasks: list[Task]
+	priority: int
 
 
 class Notice(TypedDict):

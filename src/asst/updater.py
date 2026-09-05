@@ -1,4 +1,4 @@
-import json
+import json5 as json
 import multiprocessing
 from multiprocessing.queues import Queue as QUEUE
 
@@ -28,13 +28,13 @@ def _get_cur_version(path: str, result:QUEUE[str]):
 
 class Updater:
 	# API的地址
-	Mirrors = ["https://ota.maa.plus"]
+	Mirrors = ["https://api2.maa.plus", "https://api.maa.plus"]
 	Summary_json = "/MaaAssistantArknights/api/version/summary.json"
-	ota_tasks_url = "https://ota.maa.plus/MaaAssistantArknights/api/resource/tasks.json"
+	ota_tasks_url = "/MaaAssistantArknights/api/resource/tasks.json"
 
 	@staticmethod
 	def download_file(url: str, path: str, proxies: dict[str,str] | None = None):
-		with requests.get(url, stream=True, proxies=proxies, verify=False) as r:
+		with requests.get(url, stream=True, proxies=proxies, verify=False, timeout=3600) as r:
 			with open(path, "wb") as f:
 				shutil.copyfileobj(r.raw, f)
 		return path
@@ -97,7 +97,10 @@ class Updater:
 			i = retry_times % len(api_url)
 			request_url = api_url[i] + version_summary
 			try:
-				response_data = requests.get(request_url, proxies=self.http代理, verify=False).json()
+				self.custom_print(f"正在向 {request_url} 发起请求")
+				response_data = requests.get(request_url, proxies=self.http代理, verify=False, timeout=20)
+				self.custom_print(f"返回结果 {response_data.status_code=} {response_data.text=}")
+				response_data = response_data.json()
 				"""
 				解析JSON
 				e.g.
@@ -119,6 +122,9 @@ class Updater:
 				version_type = self.map_version_type(self.maa版本类型)
 				latest_version = response_data[version_type]["version"]
 				version_detail = response_data[version_type]["detail"]
+				if not version_detail.startswith(api_url[i]):
+					version_detail = version_detail.replace("https://api.maa.plus", api_url[i]) #  https://api.maa.plus/
+					self.custom_print(f"更新version_detail链接为 {version_detail}")
 				return latest_version, version_detail
 			except Exception as e:
 				self.custom_print(repr(e))
@@ -156,7 +162,8 @@ class Updater:
 				# Windows ARM64
 				system_platform = "win-arm64"
 		# 请求的是https://ota.maa.plus/MaaAssistantArknights/api/version/stable.json，或其他版本类型对应的url
-		detail_data = requests.get(detail_url, proxies=self.http代理, verify=False).json()
+		self.custom_print(f"请求版本详情链接 {detail_url}")
+		detail_data = requests.get(detail_url, proxies=self.http代理, verify=False, timeout=20).json()
 		assets_list = detail_data["details"]["assets"]  # 列表，子元素为字典
 		changelog = detail_data["details"]["body"]  # 列表，子元素为字典
 		created_at = detail_data["details"]["created_at"]  # 列表，子元素为字典
@@ -214,27 +221,40 @@ class Updater:
 			# 开始更新逻辑
 			# 解析version_detail的JSON信息
 			# 通过API获取下载地址列表和对应文件名
-			最新版本号切分 = 最新版本号.split('.')
-			当前版本号切分 = self.当前版本号.split('.')
-			if len(最新版本号切分) > 3:
-				最新版本号去尾巴 = 最新版本号切分[0] + 最新版本号切分[1] + 最新版本号切分[2]
-			else:
-				最新版本号去尾巴 = 最新版本号
-			if len(当前版本号切分) > 3:
-				当前版本号去尾巴 = 当前版本号切分[0] + 当前版本号切分[1] + 当前版本号切分[2]
-			else:
-				当前版本号去尾巴 = self.当前版本号
+			need_update = True
+			try:
+				if 最新版本号[0] == 'v':
+					最新版本号 = 最新版本号[1:]
+				if self.当前版本号[0] == 'v':
+					self.当前版本号 = self.当前版本号[1:]
+				if '-' in 最新版本号:
+					最新版本号 = 最新版本号.split('-')[0]
+				if '-' in self.当前版本号:
+					self.当前版本号 = self.当前版本号.split('-')[0]
+				最新版本号切分 = 最新版本号.split('.')
+				当前版本号切分 = self.当前版本号.split('.')
+				if len(最新版本号切分) > 3:
+					最新版本号去尾巴 = 最新版本号切分[0] + 最新版本号切分[1] + 最新版本号切分[2]
+				else:
+					最新版本号去尾巴 = 最新版本号
+				if len(当前版本号切分) > 3:
+					当前版本号去尾巴 = 当前版本号切分[0] + 当前版本号切分[1] + 当前版本号切分[2]
+				else:
+					当前版本号去尾巴 = self.当前版本号
+				最新版本号切分 = 最新版本号去尾巴.split('.')
+				当前版本号切分 = 当前版本号去尾巴.split('.')
+				if time.mktime(time.strptime(最新版本创建时间, "%Y-%m-%dT%H:%M:%S%z")) <  time.mktime(time.strptime(self.当前版本创建日期, "%Y-%m-%dT%H:%M:%S%z")): #  and 当前版本号去尾巴 == 最新版本号去尾巴:  # 通过比较二者是否一致判断是否需要更新
+					self.custom_print("版本号存在差异，但本地版本日期更新，可能是用户已手动升级，不进行更新", log=True)
+					# return 已执行更新, 已执行OTA, self.update_log
+				elif ((int(当前版本号切分[0]) > int(最新版本号切分[0]))
+					or ((int(当前版本号切分[0]) == int(最新版本号切分[0])) and ((int(当前版本号切分[1]) > int(最新版本号切分[1]))))
+					or ((int(当前版本号切分[0]) == int(最新版本号切分[0])) and (int(当前版本号切分[1]) == int(最新版本号切分[1])) and (int(当前版本号切分[2]) > int(最新版本号切分[2])))
+				):
+					self.custom_print("版本号存在差异，但本地版本编号更大，可能是用户已手动升级，不进行更新", log=True)
+			except Exception as e:
+				self.custom_print("版本号解析异常，将强制更新 "+repr(e), log=True)
 
-			if time.mktime(time.strptime(最新版本创建时间, "%Y-%m-%dT%H:%M:%S%z")) <  time.mktime(time.strptime(self.当前版本创建日期, "%Y-%m-%dT%H:%M:%S%z")) and 当前版本号去尾巴 == 最新版本号去尾巴:  # 通过比较二者是否一致判断是否需要更新
-				self.custom_print("版本号存在差异，但本地版本日期更新，可能是用户已手动升级，不进行更新", log=True)
-				# return 已执行更新, 已执行OTA, self.update_log
-			elif ((当前版本号切分[0] > 最新版本号切分[0])
-		 		or ((当前版本号切分[0] == 最新版本号切分[0]) and ((当前版本号切分[1] > 最新版本号切分[1])))
-		 		or ((当前版本号切分[0] == 最新版本号切分[0]) and (当前版本号切分[1] == 最新版本号切分[1]) and (当前版本号切分[2] > 最新版本号切分[2]))
-			):
-				self.custom_print("版本号存在差异，但本地版本编号更大，可能是用户已手动升级，不进行更新", log=True)
-				
-			else:
+			if need_update:
 				version_log = 版本更新变动日志.replace("\\n" * 2, "\n").replace("\\n", "\n")
 				self.custom_print(f"版本更新主要日志如下：\n{version_log}", log=True)
 				self.custom_print("开始下载更新...", log=True)
@@ -246,7 +266,7 @@ class Updater:
 					return 已执行更新, 已执行OTA, self.update_log
 				# 将路径和文件名拼合成绝对路径
 				# 默认在maa主程序/MaaCore.dll所在路径下
-				压缩包保存路径 = os.path.join(self.maa_内核路径, filename)
+				压缩包保存路径 = os.path.join(self.maa_内核路径, '../'+filename)
 				# 下载，调用Downloader下载器，使用url_list（镜像url列表）和file（文件保存路径）两个参数
 				最大重试次数 = 10
 				for 重试次数 in range(最大重试次数):
@@ -262,6 +282,8 @@ class Updater:
 						unzip = False
 						# 根据拓展名选择解压算法
 						# .zip(Windows)/.tar.gz(Linux)
+						shutil.rmtree(self.maa_内核路径)
+						os.makedirs(self.maa_内核路径)
 						if file_extension == ".zip":
 							zfile = zipfile.ZipFile(压缩包保存路径, "r")
 							zfile.extractall(self.maa_内核路径)
@@ -291,8 +313,15 @@ class Updater:
 							self.custom_print("下载失败超过十次，放弃更新", log=True)
 
 		self.custom_print("\n尝试获取OTA热更新资源...", log=True)
-		response = requests.get(self.ota_tasks_url, proxies=self.http代理, verify=False)
-		ota_tasks_json = response.json()
+		for mirror in self.Mirrors:
+			try:
+				response = requests.get(mirror + self.ota_tasks_url, proxies=self.http代理, verify=False, timeout=20)
+				ota_tasks_json = response.json()
+				self.custom_print(f"{ota_tasks_json=}", log=False)
+				break
+			except Exception as e:
+				self.custom_print(repr(e))
+				continue
 		ota_tasks_path = self.maa_内核路径 / "cache" / "resource" / "tasks.json"
 		ota_tasks_bak_path = self.maa_内核路径 / "cache" / "resource" / "tasks_bak.json"
 		ota_tasks_path.parent.mkdir(parents=True, exist_ok=True)
@@ -304,12 +333,18 @@ class Updater:
 					return 已执行更新, 已执行OTA, self.update_log
 		with open(ota_tasks_path, "w", encoding="utf-8") as f:
 			with open(ota_tasks_bak_path, "w", encoding="utf-8") as f_bak:
-				response = requests.get(self.ota_tasks_url, proxies=self.http代理, verify=False)
-				task = ""
-				for key in response.json():
-					task += key + "、"
-				已执行OTA = True
-				self.custom_print(f"获取到信息：{task[:-1]}", log=True)
-				f.write(response.text)
-				f_bak.write(response.text)
+				for mirror in self.Mirrors:
+					try:
+						response = requests.get(mirror + self.ota_tasks_url, proxies=self.http代理, verify=False, timeout=20)
+						task = ""
+						for key in response.json():
+							task += key + "、"
+						已执行OTA = True
+						self.custom_print(f"获取到信息：{task[:-1]}", log=True)
+						f.write(response.text)
+						f_bak.write(response.text)
+						break
+					except Exception as e:
+						self.custom_print(repr(e))
+						continue
 		return 已执行更新, 已执行OTA, self.update_log

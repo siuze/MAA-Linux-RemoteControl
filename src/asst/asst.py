@@ -1,6 +1,6 @@
 import ctypes
 import ctypes.util
-import json
+import json5 as json
 import os
 import pathlib
 from typing import Union, Optional
@@ -19,7 +19,11 @@ class Asst:
 	"""
 
 	@staticmethod
-	def load(path: Union[pathlib.Path, str], incremental_path: Optional[Union[pathlib.Path, str]] = None, user_dir: Optional[Union[pathlib.Path, str]] = None) -> bool:
+	def load(
+		path: Union[pathlib.Path, str],
+		incremental_path: Optional[Union[pathlib.Path, str]] = None,
+		user_dir: Optional[Union[pathlib.Path, str]] = None,
+	) -> bool:
 		"""
 		加载 dll 及资源
 
@@ -29,17 +33,29 @@ class Asst:
 			``user_dir``:   用户数据（日志、调试图片等）写入文件夹路径
 		"""
 
-		platform_values = {"windows": {"libpath": "MaaCore.dll", "environ_var": "PATH"}, "darwin": {"libpath": "libMaaCore.dylib", "environ_var": "DYLD_LIBRARY_PATH"}, "linux": {"libpath": "libMaaCore.so", "environ_var": "LD_LIBRARY_PATH"}}
+		platform_values = {
+			"windows": {"libpath": "MaaCore.dll", "environ_var": "PATH"},
+			"darwin": {
+				"libpath": "libMaaCore.dylib",
+				"environ_var": "DYLD_LIBRARY_PATH",
+			},
+			"linux": {"libpath": "libMaaCore.so", "environ_var": "LD_LIBRARY_PATH"},
+		}
 		lib_import_func = None
-		platform_type = 'linux'
+		platform_type = "linux"
 		lib_import_func = ctypes.CDLL
-
+		# 这里设置了也没啥用，只能暂时加到bashrc里面了
 		Asst.__libpath = pathlib.Path(path) / platform_values[platform_type]["libpath"]
 		try:
-			os.environ[platform_values[platform_type]["environ_var"]] += os.pathsep + str(path)
+			print(f"现有环境变量：{os.environ[platform_values[platform_type]["environ_var"]]}")
+			print(f"{os.pathsep=}")
+			now_path = os.environ[platform_values[platform_type]["environ_var"]]
+			if now_path[-1:] == os.pathsep:
+				now_path = now_path[:-1]
+			os.environ[platform_values[platform_type]["environ_var"]] =  str(path) + os.pathsep + str(path)+ '/bin' + os.pathsep + now_path
 		except KeyError:
 			os.environ[platform_values[platform_type]["environ_var"]] = os.pathsep + str(path)
-
+		print(f"设置后环境变量：{platform_values[platform_type]['environ_var']}={os.environ[platform_values[platform_type]['environ_var']]}")
 		try:
 			Asst.__lib = lib_import_func(str(Asst.__libpath))
 		except OSError:
@@ -154,7 +170,7 @@ class Asst:
 
 		:return: 任务 ID, 可用于 set_task_params 接口
 		"""
-		return Asst.__lib.AsstAppendTask(self.__ptr, type_name.encode("utf-8"), json.dumps(params, ensure_ascii=False).encode("utf-8"))
+		return Asst.__lib.AsstAppendTask(self.__ptr, type_name.encode("utf-8"), json.dumps(params, quote_keys=True, ensure_ascii=False).encode("utf-8"))
 
 	def set_task_params(self, task_id: TaskId, params: JSON) -> bool:
 		"""
@@ -166,7 +182,7 @@ class Asst:
 
 		:return: 是否成功
 		"""
-		return Asst.__lib.AsstSetTaskParams(self.__ptr, task_id, json.dumps(params, ensure_ascii=False).encode("utf-8"))
+		return Asst.__lib.AsstSetTaskParams(self.__ptr, task_id, json.dumps(params, quote_keys=True, ensure_ascii=False).encode("utf-8"))
 
 	def start(self) -> bool:
 		"""

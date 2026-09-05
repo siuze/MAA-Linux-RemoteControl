@@ -1,5 +1,4 @@
 {
-	
 	"返回主界面": {
 		"algorithm": "JustReturn",
 		"action": "DoNothing",
@@ -37,11 +36,13 @@
 			"Delicious/Task.png",
 			"Gaming/Task.png",
 			"DahuangCity/Task.png",
-			"Dreamland/DreamlandDefault/Task.png",
-			"Dreamland/DreamlandDark/Task.png",
+			"Dreamland/Day/Task.png",
+			"Dreamland/Night/Task.png",
 			"JieGarden/Task.png",
 			"AveMujica/Task.png",
-			"Together/Task.png"
+			"Together/Task.png",
+			"LoneTrail/Day/Task.png",
+			"LoneTrail/Night/Task.png"
 		],
 		"next": [
 			"日常任务"
@@ -187,5 +188,35 @@
 		],
 		"maxTimes": 50
 	},
-	"AccountManagerTrashButton": {}
+	"AccountManagerTrashButton": {},
+	"MallBegin": {
+		"algorithm": "JustReturn",
+		"next": [
+			"Mall",
+			"Mall#next",
+			"Mall@ReturnButtons#next",
+			"Mall@CloseAnnos#next"
+		]
+	},
+	"TO-4": {
+		"algorithm": "JustReturn",
+		"sub": [
+			"TO-4@TO-OpenOpt"
+		],
+		"next": [
+			"TO-4@SideStoryStage",
+			"TO-4@SwipeToStage"
+		]
+	},
+	"TO-4@SideStoryStage": {
+		"text": [
+			"TO-4"
+		],
+		"ocrReplace": [
+			[
+				"T0-",
+				"TO-"
+			]
+		]
+	}
 }
